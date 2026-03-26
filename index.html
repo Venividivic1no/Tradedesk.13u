@@ -1550,7 +1550,23 @@ function addHolding() {
   const stockInfo = STOCKS.find(s => s.name.toLowerCase() === name.toLowerCase() || s.ticker.toLowerCase() === name.toLowerCase());
   const ticker = stockInfo ? stockInfo.ticker : name;
 
-  holdings.push({ id: Date.now(), name, ticker, qty, avgPrice: avg, currentPrice: cur, type, sector, portfolio: port });
+  // Check if holding already exists — if so, merge it
+  const existing = holdings.find(h =>
+    h.name.toLowerCase() === name.toLowerCase() ||
+    (ticker !== name && h.ticker && h.ticker.toLowerCase() === ticker.toLowerCase())
+  );
+
+  if(existing) {
+    // Calculate new average price: (old qty * old avg + new qty * new avg) / total qty
+    const totalQty = existing.qty + qty;
+    const newAvg = ((existing.qty * existing.avgPrice) + (qty * avg)) / totalQty;
+    existing.qty = totalQty;
+    existing.avgPrice = parseFloat(newAvg.toFixed(4));
+    existing.currentPrice = cur; // update current price
+    if(sector) existing.sector = sector;
+  } else {
+    holdings.push({ id: Date.now(), name, ticker, qty, avgPrice: avg, currentPrice: cur, type, sector, portfolio: port });
+  }
   persist();
 
   // Reset form
