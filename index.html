@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeDesk Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #04080f;
+  --bg2: #080e18;
+  --surface: #0b1220;
+  --surface2: #0f1829;
+  --surface3: #131e33;
+  --border: #1a2840;
+  --border2: #243552;
+  --accent: #0ea5e9;
+  --accent-glow: rgba(14,165,233,0.15);
+  --accent2: #6366f1;
+  --green: #10b981;
+  --green-glow: rgba(16,185,129,0.12);
+  --red: #ef4444;
+  --red-glow: rgba(239,68,68,0.12);
+  --yellow: #f59e0b;
+  --yellow-glow: rgba(245,158,11,0.12);
+  --text: #e2eaf4;
+  --text2: #8ba4be;
+  --text3: #4a6278;
+  --font-display: 'Clash Display', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --sidebar-w: 220px;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+/* ── SCANLINE OVERLAY ── */
+body::after {
+  content:'';
+  position:fixed;
+  inset:0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events:none;
+  z-index:9999;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top:0; left:0; bottom:0;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-text {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.logo-text span { color: var(--text); }
+.logo-sub { font-size: 0.6rem; color: var(--text3); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; }
+
+.nav-section-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text3);
+  padding: 16px 20px 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+  letter-spacing: 0.02em;
+}
+.nav-item:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+.nav-item.active { color: var(--accent); background: var(--accent-glow); border-left-color: var(--accent); }
+.nav-icon { font-size: 0.9rem; width: 16px; text-align:center; }
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+.risk-mini { font-size: 0.65rem; color: var(--text3); margin-bottom: 8px; }
+.risk-bar { background: var(--surface3); border-radius: 4px; height: 4px; overflow:hidden; margin-bottom: 4px; }
+.risk-fill { height:100%; border-radius:4px; background: var(--green); transition: width 0.5s, background 0.3s; }
+.risk-label { font-size: 0.6rem; color: var(--text3); display:flex; justify-content:space-between; }
+
+/* ── MAIN ── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky; top:0; z-index:50;
+  background: rgba(4,8,15,0.9);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.topbar-left { display:flex; align-items:center; gap:16px; }
+.page-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: -0.3px; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.topbar-time { font-size: 0.7rem; color: var(--text3); }
+.live-dot { display:inline-flex; align-items:center; gap:5px; font-size:0.65rem; color: var(--green); }
+.live-dot::before { content:''; width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+/* ── CONTENT ── */
+.content { padding: 24px 28px; flex:1; }
+.page { display:none; animation: fadeIn 0.2s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── GRID SYSTEM ── */
+.grid { display:grid; gap:16px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.g4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.g-70-30 { grid-template-columns: 1.8fr 1fr; }
+.g-60-40 { grid-template-columns: 1.5fr 1fr; }
+@media(max-width:1100px) { .g3,.g4 { grid-template-columns: 1fr 1fr; } .g-70-30,.g-60-40 { grid-template-columns:1fr; } }
+@media(max-width:700px) { .g2,.g3,.g4 { grid-template-columns:1fr; } }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;height:1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+}
+.card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.card-title { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--text3); }
+.card-badge { font-size:0.6rem; padding:2px 8px; border-radius:20px; }
+
+/* STAT CARD */
+.stat-card { position:relative; overflow:hidden; }
+.stat-label { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--text3); margin-bottom:8px; }
+.stat-value { font-family:var(--font-display); font-size:1.7rem; font-weight:700; line-height:1; margin-bottom:4px; }
+.stat-change { font-size:0.68rem; display:flex; align-items:center; gap:4px; }
+.stat-glow { position:absolute; bottom:-20px; right:-10px; width:80px;height:80px; border-radius:50%; opacity:0.08; filter:blur(20px); }
+
+/* COLORS */
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.neu { color: var(--accent); }
+.warn { color: var(--yellow); }
+
+/* ── SIGNAL BADGE ── */
+.signal-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 8px 16px; border-radius: 8px;
+  font-family: var(--font-display); font-weight:600; font-size:0.9rem;
+}
+.signal-long { background:var(--green-glow); color:var(--green); border:1px solid rgba(16,185,129,0.25); }
+.signal-short { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.25); }
+.signal-wait { background:var(--yellow-glow); color:var(--yellow); border:1px solid rgba(245,158,11,0.25); }
+.signal-neutral { background:rgba(14,165,233,0.08); color:var(--accent); border:1px solid rgba(14,165,233,0.2); }
+
+/* ── AI BLOCK ── */
+.ai-block {
+  background: linear-gradient(135deg, rgba(14,165,233,0.04), rgba(99,102,241,0.04));
+  border: 1px solid rgba(14,165,233,0.15);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.ai-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.ai-dot { width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite; }
+.ai-label { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); }
+.ai-text { font-size:0.78rem; line-height:1.8; color:#a8c4d8; white-space:pre-wrap; }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  background: var(--accent); color:#000;
+  border:none; border-radius:8px;
+  font-family:var(--font-display); font-weight:600; font-size:0.75rem;
+  padding: 8px 16px; cursor:pointer;
+  transition: all 0.2s; letter-spacing:0.02em; white-space:nowrap;
+}
+.btn:hover { filter:brightness(1.1); transform:translateY(-1px); }
+.btn-sm { padding:5px 12px; font-size:0.68rem; }
+.btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--text2); }
+.btn-ghost:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-glow); transform:none; }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-green { background:var(--green); color:#000; }
+
+/* ── INPUTS ── */
+input, select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  width: 100%;
+  outline:none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+textarea { resize:vertical; min-height:70px; }
+label { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text3); display:block; margin-bottom:5px; }
+.form-group { margin-bottom:12px; }
+.form-row { display:grid; gap:10px; margin-bottom:10px; }
+.fr2 { grid-template-columns:1fr 1fr; }
+.fr3 { grid-template-columns:1fr 1fr 1fr; }
+.fr4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+@media(max-width:600px) { .fr3,.fr4 { grid-template-columns:1fr 1fr; } }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+th { text-align:left; color:var(--text3); font-size:0.6rem; text-transform:uppercase; letter-spacing:0.08em; padding:8px 12px; border-bottom:1px solid var(--border); font-weight:500; }
+td { padding:10px 12px; border-bottom:1px solid rgba(26,40,64,0.5); }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(14,165,233,0.02); }
+
+/* ── NEWS ── */
+.news-item { padding:14px 0; border-bottom:1px solid var(--border); display:flex; gap:12px; }
+.news-item:last-child { border-bottom:none; }
+.news-accent { width:2px; flex-shrink:0; border-radius:2px; background:var(--accent); }
+.news-title { font-size:0.78rem; margin-bottom:4px; line-height:1.4; }
+.news-meta { font-size:0.62rem; color:var(--text3); }
+.news-impact { font-size:0.6rem; padding:2px 6px; border-radius:4px; }
+.impact-high { background:var(--red-glow); color:var(--red); }
+.impact-med { background:var(--yellow-glow); color:var(--yellow); }
+.impact-low { background:rgba(14,165,233,0.08); color:var(--accent); }
+
+/* ── RISK METER ── */
+.risk-meter { position:relative; height:8px; background:var(--surface3); border-radius:4px; overflow:hidden; margin:8px 0; }
+.risk-fill-main { height:100%; border-radius:4px; transition: width 0.5s, background 0.3s; }
+
+/* ── EQUITY CHART ── */
+.chart-container { position:relative; height:180px; }
+
+/* ── PROGRESS ── */
+.progress { background:var(--surface3); border-radius:4px; height:6px; overflow:hidden; margin-top:6px; }
+.progress-fill { height:100%; border-radius:4px; background:linear-gradient(90deg, var(--accent), var(--accent2)); transition:width 0.5s; }
+
+/* ── ACTION ITEM ── */
+.action-item {
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:12px 14px;
+  margin-bottom:8px;
+  display:flex; align-items:center; gap:12px;
+}
+.action-ticker { font-family:var(--font-display); font-weight:600; font-size:0.9rem; min-width:60px; }
+.action-desc { flex:1; font-size:0.75rem; color:var(--text2); }
+.action-btns { display:flex; gap:6px; flex-shrink:0; }
+.action-btn { padding:4px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.65rem; font-family:var(--font-mono); font-weight:500; transition:all 0.15s; }
+.ab-done { background:var(--green-glow); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
+.ab-ignore { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.2); }
+.ab-wait { background:var(--yellow-glow); color:var(--yellow); border:1px solid rgba(245,158,11,0.2); }
+.ab-watch { background:rgba(99,102,241,0.1); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); }
+
+/* ── STOP BLOCK ── */
+.stop-block {
+  background: var(--red-glow);
+  border: 2px solid var(--red);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align:center;
+  animation: stopPulse 1.5s infinite;
+}
+@keyframes stopPulse { 0%,100%{border-color:var(--red)} 50%{border-color:rgba(239,68,68,0.3)} }
+.stop-icon { font-size:2.5rem; margin-bottom:8px; }
+.stop-title { font-family:var(--font-display); font-size:1.3rem; font-weight:700; color:var(--red); }
+.stop-msg { font-size:0.75rem; color:var(--text2); margin-top:6px; }
+
+/* ── SETUP TAG ── */
+.setup-tag { display:inline-block; padding:3px 8px; border-radius:4px; font-size:0.62rem; background:rgba(99,102,241,0.1); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); margin:2px; }
+
+/* ── SECTION HEADER ── */
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.section-title { font-family:var(--font-display); font-size:1.1rem; font-weight:600; letter-spacing:-0.3px; }
+
+/* ── MOBILE NAV ── */
+.mobile-nav-toggle { display:none; background:none; border:none; color:var(--text); font-size:1.2rem; cursor:pointer; }
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:99; }
+
+/* ── SPINNER ── */
+.spinner { display:inline-block; width:14px;height:14px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── EMPTY ── */
+.empty { text-align:center; color:var(--text3); padding:32px 0; font-size:0.75rem; }
+
+/* ── PORTFOLIO TABS ── */
+.port-tabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+.port-tab { padding:5px 14px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text3); font-family:var(--font-mono); font-size:0.7rem; cursor:pointer; transition:all 0.15s; }
+.port-tab.active { background:var(--accent-glow); color:var(--accent); border-color:rgba(14,165,233,0.3); }
+.port-tab:hover:not(.active) { border-color:var(--border2); color:var(--text); }
+
+/* ── TRADE CARD ── */
+.trade-card { border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:8px; transition:border-color 0.2s; }
+.trade-card:hover { border-color:var(--border2); }
+.trade-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; }
+.trade-meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; font-size:0.72rem; color:var(--text2); }
+
+/* ── GOAL CARD ── */
+.goal-card { border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px; }
+.goal-header { display:flex; justify-content:space-between; margin-bottom:8px; }
+.goal-name { font-size:0.8rem; font-weight:500; }
+.goal-pct { font-family:var(--font-display); font-size:1rem; font-weight:600; }
+
+/* ── SCROLL ── */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+/* ── MOBILE ── */
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-overlay.open { display:block; }
+  .main { margin-left:0; }
+  .mobile-nav-toggle { display:block; }
+  .content { padding:16px; }
+  .topbar { padding:0 16px; }
+}
+
+/* UTIL */
+.mt8 { margin-top:8px; }
+.mt12 { margin-top:12px; }
+.mt16 { margin-top:16px; }
+.mb8 { margin-bottom:8px; }
+.flex { display:flex; }
+.flex-between { display:flex; justify-content:space-between; align-items:center; }
+.flex-center { display:flex; align-items:center; gap:8px; }
+.text-right { text-align:right; }
+.divider { border:none; border-top:1px solid var(--border); margin:16px 0; }
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.62rem; }
+.tag-blue { background:rgba(14,165,233,0.1); color:var(--accent); }
+.tag-purple { background:rgba(99,102,241,0.1); color:var(--accent2); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">Trade<span>Desk</span></div>
+    <div class="logo-sub">Pro Dashboard</div>
+  </div>
+
+  <div class="nav-section-label">Huvud</div>
+  <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">⬡</span> Dashboard</div>
+  <div class="nav-item" onclick="showPage('us100',this)"><span class="nav-icon">📈</span> US100 Analys</div>
+  <div class="nav-item" onclick="showPage('portfolio',this)"><span class="nav-icon">💼</span> Portfölj</div>
+  <div class="nav-item" onclick="showPage('journal',this)"><span class="nav-icon">📓</span> Trade Journal</div>
+
+  <div class="nav-section-label">Analys</div>
+  <div class="nav-item" onclick="showPage('stats',this)"><span class="nav-icon">📊</span> Statistik</div>
+  <div class="nav-item" onclick="showPage('news',this)"><span class="nav-icon">📰</span> Nyheter</div>
+  <div class="nav-item" onclick="showPage('goals',this)"><span class="nav-icon">🎯</span> Mål</div>
+
+  <div class="nav-section-label">System</div>
+  <div class="nav-item" onclick="showPage('risk',this)"><span class="nav-icon">⚠️</span> Risk</div>
+  <div class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span> Inställningar</div>
+
+  <div class="sidebar-bottom">
+    <div class="risk-mini">Daglig risk</div>
+    <div class="risk-bar"><div class="risk-fill" id="sb-risk-fill" style="width:0%"></div></div>
+    <div class="risk-label"><span id="sb-risk-used">$0</span><span id="sb-risk-max">$0 max</span></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-nav-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="page-title" id="page-title">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <span class="live-dot">Live</span>
+      <span class="topbar-time" id="topbar-time"></span>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ═══════════ DASHBOARD ═══════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- STAT ROW -->
+      <div class="grid g4 mb8" style="margin-bottom:16px">
+        <div class="card stat-card">
+          <div class="stat-glow" style="background:var(--accent)"></div>
+          <div class="stat-label">Total Portfölj</div>
+          <div class="stat-value neu" id="db-total">—</div>
+          <div class="stat-change" id="db-total-change" style="color:var(--text3)">Inga innehav</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-glow" style="background:var(--green)"></div>
+          <div class="stat-label">Trading PnL</div>
+          <div class="stat-value" id="db-pnl">—</div>
+          <div class="stat-change" id="db-pnl-sub" style="color:var(--text3)">Inga trades</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-glow" style="background:var(--yellow)"></div>
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value neu" id="db-wr">—</div>
+          <div class="stat-change" id="db-wr-sub" style="color:var(--text3)">—</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-glow" style="background:var(--red)"></div>
+          <div class="stat-label">Daglig Risk</div>
+          <div class="stat-value" id="db-drisk">$0</div>
+          <div class="stat-change" id="db-drisk-sub" style="color:var(--text3)">av $0 max</div>
+        </div>
+      </div>
+
+      <div class="grid g-70-30" style="margin-bottom:16px">
+        <!-- AI DAILY BRIEF -->
+        <div class="ai-block">
+          <div class="ai-header">
+            <div class="ai-dot"></div>
+            <div class="ai-label">Daglig AI Brief</div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <div id="db-us100-signal-mini"></div>
+              <button class="btn btn-sm" onclick="generateDailyBrief()">Generera</button>
+            </div>
+          </div>
+          <div class="ai-text" id="db-brief">Tryck på "Generera" för att få dagens marknadsbias, viktigaste nivåer, nyheter och handlingsplan.</div>
+        </div>
+
+        <!-- RISK PANEL -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Risk Idag</div>
+            <div id="risk-status-badge"></div>
+          </div>
+          <div id="risk-panel-content">
+            <div class="empty" style="padding:12px 0">Konfigurera risk under ⚠️ Risk</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EQUITY + NEWS -->
+      <div class="grid g-60-40">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Equity Curve</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="setChartPeriod('all')">Alla</button>
+              <button class="btn btn-ghost btn-sm" onclick="setChartPeriod('month')">30d</button>
+              <button class="btn btn-ghost btn-sm" onclick="setChartPeriod('week')">7d</button>
+            </div>
+          </div>
+          <div class="chart-container"><canvas id="equity-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Senaste Nyheter</div>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('news', document.querySelector('[onclick*=\"news\"]'))">Alla →</button>
+          </div>
+          <div id="db-news"><div class="empty">Laddar...</div></div>
+        </div>
+      </div>
+
+    </div><!-- /dashboard -->
+
+    <!-- ═══════════ US100 ═══════════ -->
+    <div class="page" id="page-us100">
+
+      <div class="grid g-70-30" style="margin-bottom:16px">
+        <div>
+          <div class="ai-block" style="margin-bottom:16px">
+            <div class="ai-header">
+              <div class="ai-dot"></div>
+              <div class="ai-label">US100 – Daglig Top-Down Analys</div>
+              <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                <div id="us-signal-badge"><span class="signal-badge signal-neutral">— Ej genererad</span></div>
+                <button class="btn btn-sm" onclick="generateUS100()">Analysera</button>
+              </div>
+            </div>
+            <div class="ai-text" id="us-analysis-text">Generera analys för att se today's bias baserat på 4H→1H→15m struktur, likviditet, FVG, sweeps och A++ setup-criteria.</div>
+          </div>
+
+          <!-- TIMEFRAME GRID -->
+          <div class="grid g4" style="margin-bottom:16px">
+            <div class="card" style="padding:12px">
+              <div class="card-title" style="margin-bottom:6px">4H</div>
+              <div id="tf-4h" style="font-size:0.75rem;color:var(--text3)">—</div>
+            </div>
+            <div class="card" style="padding:12px">
+              <div class="card-title" style="margin-bottom:6px">1H</div>
+              <div id="tf-1h" style="font-size:0.75rem;color:var(--text3)">—</div>
+            </div>
+            <div class="card" style="padding:12px">
+              <div class="card-title" style="margin-bottom:6px">15M</div>
+              <div id="tf-15m" style="font-size:0.75rem;color:var(--text3)">—</div>
+            </div>
+            <div class="card" style="padding:12px">
+              <div class="card-title" style="margin-bottom:6px">5M</div>
+              <div id="tf-5m" style="font-size:0.75rem;color:var(--text3)">—</div>
+            </div>
+          </div>
+
+          <!-- A++ ENGINE -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">A++ Setup Engine</div>
+              <div id="aplus-badge"></div>
+            </div>
+            <div id="aplus-checklist">
+              <div class="empty">Generera analys för att se setup-kriterier</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <!-- KEY LEVELS -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><div class="card-title">Nyckelnivåer</div></div>
+            <div id="us-levels">
+              <div class="empty">Generera analys</div>
+            </div>
+          </div>
+
+          <!-- SESSION BIAS -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Session Bias</div></div>
+            <div id="us-sessions">
+              <div style="font-size:0.72rem;color:var(--text3);line-height:2">
+                <div class="flex-between"><span>Asia</span><span id="sess-asia">—</span></div>
+                <div class="flex-between"><span>London</span><span id="sess-london">—</span></div>
+                <div class="flex-between"><span>New York</span><span id="sess-ny">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- US100 NEWS -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">US100 Relaterade Nyheter</div><button class="btn btn-ghost btn-sm" onclick="loadUS100News()">🔄</button></div>
+        <div id="us-news"><div class="empty">Laddar...</div></div>
+      </div>
+    </div><!-- /us100 -->
+
+    <!-- ═══════════ PORTFOLIO ═══════════ -->
+    <div class="page" id="page-portfolio">
+
+      <!-- PORTFOLIO SWITCHER -->
+      <div class="section-header">
+        <div class="port-tabs" id="port-tabs">
+          <button class="port-tab active" onclick="switchPortfolio('aktier',this)">Aktier</button>
+          <button class="port-tab" onclick="switchPortfolio('krypto',this)">Krypto</button>
+          <button class="port-tab" onclick="switchPortfolio('alla',this)">Kombinerat</button>
+        </div>
+        <button class="btn btn-sm" onclick="showAddHolding()">+ Lägg till</button>
+      </div>
+
+      <!-- PORTFOLIO STATS -->
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="card stat-card">
+          <div class="stat-label">Portföljvärde</div>
+          <div class="stat-value neu" id="port-total">—</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Total P&L</div>
+          <div class="stat-value" id="port-pnl">—</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Avkastning %</div>
+          <div class="stat-value" id="port-pct">—</div>
+        </div>
+      </div>
+
+      <!-- ADD FORM -->
+      <div class="card" id="add-holding-form" style="display:none;margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Lägg till innehav</div><button class="btn btn-ghost btn-sm" onclick="hideAddHolding()">✕</button></div>
+        <div class="form-row fr4">
+          <div><label>Namn</label><input id="h-name" placeholder="Apple / BTC" /></div>
+          <div><label>Typ</label><select id="h-type"><option value="aktie">Aktie</option><option value="fond">Fond</option><option value="etf">ETF</option><option value="krypto">Krypto</option></select></div>
+          <div><label>Antal</label><input id="h-qty" type="number" placeholder="10" step="any" /></div>
+          <div><label>Snittpris</label><input id="h-avg" type="number" placeholder="150" step="any" /></div>
+        </div>
+        <div class="form-row fr3">
+          <div><label>Nuv. pris</label><input id="h-cur" type="number" placeholder="170" step="any" /></div>
+          <div><label>Sektor</label><input id="h-sector" placeholder="Tech / Energi" /></div>
+          <div><label>Portfölj</label><select id="h-port"><option value="aktier">Aktier</option><option value="krypto">Krypto</option></select></div>
+        </div>
+        <button class="btn" onclick="addHolding()">Lägg till</button>
+      </div>
+
+      <!-- HOLDINGS TABLE -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Namn</th><th>Typ</th><th>Antal</th><th>Snittpris</th><th>Nuv. Pris</th><th>Värde</th><th>P&L</th><th>%</th><th></th></tr></thead>
+            <tbody id="holdings-tbody"><tr><td colspan="9"><div class="empty">Inga innehav</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AI PORTFOLIO COACH -->
+      <div class="ai-block">
+        <div class="ai-header">
+          <div class="ai-dot"></div>
+          <div class="ai-label">AI Portfölj-Coach</div>
+          <button class="btn btn-sm" style="margin-left:auto" onclick="analyzePortfolio()">Analysera</button>
+        </div>
+        <div class="ai-text" id="port-ai-text">Analysera din portfölj för att få konkreta råd: köp / fyll på / behåll / minska / sälj.</div>
+      </div>
+
+      <!-- AI ACTIONS -->
+      <div class="card mt16" id="actions-card" style="display:none">
+        <div class="card-header"><div class="card-title">AI Actions – Förslag att följa upp</div></div>
+        <div id="actions-list"></div>
+      </div>
+
+    </div><!-- /portfolio -->
+
+    <!-- ═══════════ JOURNAL ═══════════ -->
+    <div class="page" id="page-journal">
+
+      <!-- RISK BLOCK -->
+      <div id="journal-risk-block" style="margin-bottom:16px"></div>
+
+      <!-- PNL SUMMARY -->
+      <div class="grid g4" style="margin-bottom:16px" id="journal-stats-row">
+        <div class="card stat-card"><div class="stat-label">Trades</div><div class="stat-value neu" id="j-count">0</div></div>
+        <div class="card stat-card"><div class="stat-label">Win Rate</div><div class="stat-value" id="j-wr">—</div></div>
+        <div class="card stat-card"><div class="stat-label">Total PnL</div><div class="stat-value" id="j-pnl">—</div></div>
+        <div class="card stat-card"><div class="stat-label">Avg RR</div><div class="stat-value neu" id="j-rr">—</div></div>
+      </div>
+
+      <!-- LOG TRADE -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Logga Trade – US100</div></div>
+        <div class="form-row fr4">
+          <div><label>Datum</label><input type="date" id="t-date" /></div>
+          <div><label>Riktning</label><select id="t-dir"><option value="long">Long ↑</option><option value="short">Short ↓</option></select></div>
+          <div><label>Setup</label><select id="t-setup"><option value="fvg">FVG</option><option value="sweep">Liquidity Sweep</option><option value="cisd">CISD</option><option value="smt">SMT</option><option value="ob">Order Block</option><option value="other">Annat</option></select></div>
+          <div><label>Session</label><select id="t-session"><option value="london">London</option><option value="ny">New York</option><option value="asia">Asia</option></select></div>
+        </div>
+        <div class="form-row fr4">
+          <div><label>Entry</label><input type="number" id="t-entry" placeholder="20100" step="any" /></div>
+          <div><label>Exit</label><input type="number" id="t-exit" placeholder="20250" step="any" /></div>
+          <div><label>Stop Loss</label><input type="number" id="t-sl" placeholder="20050" step="any" /></div>
+          <div><label>Take Profit</label><input type="number" id="t-tp" placeholder="20300" step="any" /></div>
+        </div>
+        <div class="form-row fr3">
+          <div><label>Storlek ($)</label><input type="number" id="t-size" placeholder="1000" step="any" /></div>
+          <div><label>Följde plan?</label><select id="t-plan"><option value="yes">✅ Ja</option><option value="partial">⚠️ Delvis</option><option value="no">❌ Nej</option></select></div>
+          <div><label>A++ Setup?</label><select id="t-aplus"><option value="yes">✅ Ja</option><option value="no">❌ Nej</option></select></div>
+        </div>
+        <div class="form-group">
+          <label>Anteckningar (varför tog du traden? vad såg du?)</label>
+          <textarea id="t-notes" placeholder="Såg ett FVG på 15m efter London sweep, HTF bias bullish..."></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="addTrade()">Logga trade</button>
+          <button class="btn btn-ghost" onclick="analyzeJournal()">🤖 AI Coach-analys</button>
+        </div>
+      </div>
+
+      <!-- TRADES LIST -->
+      <div id="trades-list"><div class="empty">Inga trades loggade ännu.</div></div>
+
+      <!-- AI JOURNAL ANALYSIS -->
+      <div class="ai-block mt16" id="journal-ai-block" style="display:none">
+        <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI Trade Coach – Analys & Kritik</div></div>
+        <div class="ai-text" id="journal-ai-text">Laddar...</div>
+      </div>
+
+    </div><!-- /journal -->
+
+    <!-- ═══════════ STATISTIK ═══════════ -->
+    <div class="page" id="page-stats">
+      <div class="grid g4" style="margin-bottom:16px">
+        <div class="card stat-card"><div class="stat-label">Totalt trades</div><div class="stat-value neu" id="s-count">0</div></div>
+        <div class="card stat-card"><div class="stat-label">Win Rate</div><div class="stat-value pos" id="s-wr">—</div></div>
+        <div class="card stat-card"><div class="stat-label">Profit Factor</div><div class="stat-value neu" id="s-pf">—</div></div>
+        <div class="card stat-card"><div class="stat-label">Max Drawdown</div><div class="stat-value neg" id="s-dd">—</div></div>
+      </div>
+
+      <div class="grid g-60-40" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Equity Curve</div></div>
+          <div class="chart-container"><canvas id="stats-equity-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Long vs Short</div></div>
+          <div class="chart-container"><canvas id="ls-chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Bästa Setups</div></div>
+          <div id="best-setups"><div class="empty">Inga trades</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Bästa Session</div></div>
+          <div id="best-sessions"><div class="empty">Inga trades</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Plan-disciplin</div></div>
+          <div id="plan-stats"><div class="empty">Inga trades</div></div>
+        </div>
+      </div>
+
+      <div class="ai-block">
+        <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI Mönsteranalys</div><button class="btn btn-sm" style="margin-left:auto" onclick="analyzePatterns()">Analysera</button></div>
+        <div class="ai-text" id="patterns-text">Tryck för att se mönster i din trading — vad som funkar, vad som inte funkar.</div>
+      </div>
+    </div><!-- /stats -->
+
+    <!-- ═══════════ NYHETER ═══════════ -->
+    <div class="page" id="page-news">
+      <div class="section-header">
+        <div class="section-title">Marknads­nyheter</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="loadNews('nasdaq us100 tech stocks')">US100</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadPortfolioNews()">Min portfölj</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadNews('federal reserve inflation macro economy')">Makro</button>
+          <button class="btn btn-sm" onclick="loadNews('nasdaq stock market finance')">🔄 Uppdatera</button>
+        </div>
+      </div>
+      <div class="card">
+        <div id="news-list"><div class="empty">Laddar nyheter...</div></div>
+      </div>
+      <div class="ai-block mt16" id="news-ai-block" style="display:none">
+        <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI Nyhetsanalys – Vad betyder detta för din handel?</div></div>
+        <div class="ai-text" id="news-ai-text"></div>
+      </div>
+    </div><!-- /news -->
+
+    <!-- ═══════════ MÅL ═══════════ -->
+    <div class="page" id="page-goals">
+      <div class="section-header">
+        <div class="section-title">Mål & Tracking</div>
+        <button class="btn btn-sm" onclick="showAddGoal()">+ Nytt mål</button>
+      </div>
+
+      <div class="card" id="add-goal-form" style="display:none;margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Skapa mål</div><button class="btn btn-ghost btn-sm" onclick="hideAddGoal()">✕</button></div>
+        <div class="form-row fr3">
+          <div><label>Målnamn</label><input id="g-name" placeholder="Spara 50 000 kr" /></div>
+          <div><label>Typ</label><select id="g-type"><option value="kapital">Kapitalmål</option><option value="trading">Tradingmål</option><option value="spar">Sparmål</option><option value="winrate">Win Rate</option></select></div>
+          <div><label>Målvärde</label><input id="g-target" type="number" placeholder="50000" /></div>
+        </div>
+        <div class="form-row fr2">
+          <div><label>Nuvarande värde</label><input id="g-current" type="number" placeholder="12000" /></div>
+          <div><label>Deadline</label><input id="g-deadline" type="date" /></div>
+        </div>
+        <button class="btn" onclick="addGoal()">Spara mål</button>
+      </div>
+
+      <div id="goals-list"><div class="empty">Inga mål satta ännu.</div></div>
+
+      <!-- SAVINGS -->
+      <div class="card mt16">
+        <div class="card-header"><div class="card-title">Sparande & Ekonomi</div></div>
+        <div class="form-row fr3">
+          <div><label>Månadssparande (kr)</label><input id="monthly-save" type="number" placeholder="3000" onchange="saveSavings()" /></div>
+          <div><label>Totalt investerat (kr)</label><input id="total-invested" type="number" placeholder="50000" onchange="saveSavings()" /></div>
+          <div><label>Startkapital (kr)</label><input id="start-capital" type="number" placeholder="10000" onchange="saveSavings()" /></div>
+        </div>
+        <div id="savings-summary" style="font-size:0.75rem;color:var(--text2);margin-top:8px"></div>
+      </div>
+    </div><!-- /goals -->
+
+    <!-- ═══════════ RISK ═══════════ -->
+    <div class="page" id="page-risk">
+      <div class="section-header">
+        <div class="section-title">Risk Management</div>
+      </div>
+
+      <div class="grid g-60-40" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Konfigurera Riskregler</div></div>
+          <div class="form-row fr3">
+            <div><label>Max förlust/dag ($)</label><input id="r-maxloss" type="number" placeholder="200" /></div>
+            <div><label>Max trades/dag</label><input id="r-maxtrades" type="number" placeholder="3" /></div>
+            <div><label>Max risk/trade ($)</label><input id="r-pertrade" type="number" placeholder="50" /></div>
+          </div>
+          <button class="btn" onclick="saveRisk()">Spara regler</button>
+        </div>
+
+        <div class="card" id="risk-status-card">
+          <div class="card-header"><div class="card-title">Status Idag</div></div>
+          <div id="risk-today-status"><div class="empty">Konfigurera regler</div></div>
+        </div>
+      </div>
+
+      <div id="risk-stop-block" style="display:none;margin-bottom:16px">
+        <div class="stop-block">
+          <div class="stop-icon">🛑</div>
+          <div class="stop-title">STOP TRADING</div>
+          <div class="stop-msg" id="stop-reason">Du har nått din dagliga förlustnivå.</div>
+        </div>
+      </div>
+
+      <div class="ai-block">
+        <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI Disciplin-coach</div><button class="btn btn-sm" style="margin-left:auto" onclick="getDisciplineCoach()">Analysera</button></div>
+        <div class="ai-text" id="discipline-text">AI analyserar om du följer din plan och ger dig ärlig feedback.</div>
+      </div>
+    </div><!-- /risk -->
+
+    <!-- ═══════════ SETTINGS ═══════════ -->
+    <div class="page" id="page-settings">
+      <div class="section-header"><div class="section-title">Inställningar</div></div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header"><div class="card-title">API-nycklar</div></div>
+        <div class="form-group"><label>Anthropic API-nyckel</label><input type="password" id="s-anthropic" placeholder="sk-ant-..." /></div>
+        <div class="form-group"><label>NewsAPI-nyckel</label><input type="password" id="s-news" placeholder="din nyckel" /></div>
+        <button class="btn" onclick="saveSettings()">Spara</button>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header"><div class="card-title">Profil</div></div>
+        <div class="form-row fr3">
+          <div><label>Ålder</label><input id="s-age" type="number" value="21" /></div>
+          <div><label>Valuta</label><select id="s-currency"><option value="SEK">SEK</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
+          <div><label>Startkapital ($)</label><input id="s-startcap" type="number" placeholder="1000" /></div>
+        </div>
+        <button class="btn" onclick="saveSettings()">Spara</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Data</div></div>
+        <button class="btn btn-danger btn-sm" onclick="clearData()">Rensa all data</button>
+      </div>
+    </div><!-- /settings -->
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════
+// CONFIG – API KEYS INBYGGDA
+// ═══════════════════════════════
+const ANTHROPIC_KEY = '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';
+const NEWS_KEY = '0670e1fb7ad844cbb9d1d23dd34bea8c';
+
+// ═══════════════════════════════
+// STATE
+// ═══════════════════════════════
+let holdings = JSON.parse(localStorage.getItem('td2_holdings') || '[]');
+let trades   = JSON.parse(localStorage.getItem('td2_trades')   || '[]');
+let goals    = JSON.parse(localStorage.getItem('td2_goals')    || '[]');
+let actions  = JSON.parse(localStorage.getItem('td2_actions')  || '[]');
+let settings = JSON.parse(localStorage.getItem('td2_settings') || '{"age":21,"currency":"SEK","startcap":1000}');
+let risk     = JSON.parse(localStorage.getItem('td2_risk')     || '{"maxloss":0,"maxtrades":0,"pertrade":0}');
+let savings  = JSON.parse(localStorage.getItem('td2_savings')  || '{}');
+
+let currentPortfolio = 'aktier';
+let equityChart = null;
+let statsEquityChart = null;
+let lsChart = null;
+
+function persist() {
+  localStorage.setItem('td2_holdings', JSON.stringify(holdings));
+  localStorage.setItem('td2_trades',   JSON.stringify(trades));
+  localStorage.setItem('td2_goals',    JSON.stringify(goals));
+  localStorage.setItem('td2_actions',  JSON.stringify(actions));
+  localStorage.setItem('td2_settings', JSON.stringify(settings));
+  localStorage.setItem('td2_risk',     JSON.stringify(risk));
+  localStorage.setItem('td2_savings',  JSON.stringify(savings));
+}
+
+// ═══════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════
+const pageTitles = { dashboard:'Dashboard', us100:'US100 Analys', portfolio:'Portfölj', journal:'Trade Journal', stats:'Statistik', news:'Nyheter', goals:'Mål & Tracking', risk:'Risk Management', settings:'Inställningar' };
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('page-title').textContent = pageTitles[id] || id;
+  closeSidebar();
+  // page init
+  if(id === 'dashboard') initDashboard();
+  if(id === 'us100') loadUS100News();
+  if(id === 'portfolio') renderPortfolio();
+  if(id === 'journal') renderJournal();
+  if(id === 'stats') renderStats();
+  if(id === 'news') loadNews('nasdaq us100 stock market finance');
+  if(id === 'goals') renderGoals();
+  if(id === 'risk') renderRisk();
+  if(id === 'settings') loadSettings();
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+// ═══════════════════════════════
+// CLOCK
+// ═══════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('topbar-time').textContent = now.toLocaleString('sv-SE', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ═══════════════════════════════
+// AI CALL
+// ═══════════════════════════════
+async function callAI(prompt, system = '') {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        system: system || 'Du är en professionell trading coach och analytiker. Svara alltid på svenska. Var konkret, direkt och pedagogisk. Inga floskler.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const d = await r.json();
+    if(d.error) return '❌ API-fel: ' + d.error.message;
+    return d.content.map(c => c.text || '').join('');
+  } catch(e) { return '❌ Nätverksfel: ' + e.message; }
+}
+
+// ═══════════════════════════════
+// NEWS
+// ═══════════════════════════════
+async function fetchNews(q) {
+  try {
+    const r = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&language=en&sortBy=publishedAt&pageSize=8&apiKey=${NEWS_KEY}`);
+    const d = await r.json();
+    return d.articles || [];
+  } catch { return demoNews(); }
+}
+
+function demoNews() {
+  return [
+    { title:'Fed håller räntan — marknaden reagerar positivt på uttalande', source:{name:'Reuters'}, publishedAt: new Date().toISOString(), impact:'high' },
+    { title:'Nasdaq stiger på stark tech-rapport från storbolag', source:{name:'Bloomberg'}, publishedAt: new Date().toISOString(), impact:'high' },
+    { title:'Inflationsdata bättre än väntat — riskaptiten ökar', source:{name:'FT'}, publishedAt: new Date().toISOString(), impact:'med' },
+    { title:'US100 testar viktigt motstånd — analytiker delade', source:{name:'CNBC'}, publishedAt: new Date().toISOString(), impact:'med' },
+    { title:'Jobbsiffror över förväntan — dollarindex stärks', source:{name:'MarketWatch'}, publishedAt: new Date().toISOString(), impact:'low' },
+  ];
+}
+
+function renderNewsItems(articles, containerId, limit = 5) {
+  const el = document.getElementById(containerId);
+  if(!articles.length) { el.innerHTML = '<div class="empty">Inga nyheter</div>'; return; }
+  el.innerHTML = articles.slice(0, limit).map(a => {
+    const impact = a.impact || (Math.random() > 0.6 ? 'high' : Math.random() > 0.4 ? 'med' : 'low');
+    return `<div class="news-item">
+      <div class="news-accent"></div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+          <div class="news-title">${a.title || '—'}</div>
+          <span class="news-impact impact-${impact}">${impact === 'high' ? '🔴 HÖG' : impact === 'med' ? '🟡 MED' : '🟢 LÅG'}</span>
+        </div>
+        <div class="news-meta">${a.source?.name || '—'} · ${(a.publishedAt||'').substring(0,10)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadNews(q) {
+  document.getElementById('news-list').innerHTML = '<div class="empty"><div class="spinner"></div> Laddar nyheter...</div>';
+  const articles = await fetchNews(q);
+  renderNewsItems(articles, 'news-list', 10);
+  // AI explain
+  if(articles.length) {
+    const block = document.getElementById('news-ai-block');
+    block.style.display = 'block';
+    const el = document.getElementById('news-ai-text');
+    el.textContent = '⏳ AI analyserar nyheter...';
+    const headlines = articles.slice(0,5).map(a => a.title).join('\n');
+    const result = await callAI(`Dessa nyheter är aktuella just nu:\n${headlines}\n\nFörklara kort (3-4 meningar) vad detta betyder för US100 och min trading idag. Var konkret.`);
+    el.textContent = result;
+  }
+}
+
+async function loadPortfolioNews() {
+  const tickers = holdings.map(h => h.name).join(' OR ');
+  if(!tickers) { loadNews('nasdaq us100 stock market'); return; }
+  loadNews(tickers + ' stock');
+}
+
+async function loadUS100News() {
+  const articles = await fetchNews('nasdaq 100 NQ futures US tech');
+  renderNewsItems(articles, 'us-news', 5);
+}
+
+// ═══════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════
+function initDashboard() {
+  updateDashboardStats();
+  renderEquityChart();
+  fetchNews('nasdaq stock market finance').then(a => renderNewsItems(a, 'db-news', 4));
+  updateRiskDashboard();
+}
+
+function updateDashboardStats() {
+  const filtered = holdings.filter(h => h.portfolio === currentPortfolio || true);
+  const total = holdings.reduce((s,h) => s + h.qty * h.currentPrice, 0);
+  const cost  = holdings.reduce((s,h) => s + h.qty * h.avgPrice, 0);
+  const portPnl = total - cost;
+
+  document.getElementById('db-total').textContent = total > 0 ? fmtCurr(total) : '—';
+  document.getElementById('db-total-change').textContent = total > 0 ? `${portPnl >= 0 ? '+' : ''}${fmtCurr(portPnl)} P&L` : 'Inga innehav';
+  document.getElementById('db-total-change').className = 'stat-change ' + (portPnl >= 0 ? 'pos' : 'neg');
+
+  const { totalPnl, winRate, count } = calcTradeStats();
+  const pnlEl = document.getElementById('db-pnl');
+  pnlEl.textContent = count ? (totalPnl >= 0 ? '+' : '') + '$' + Math.abs(totalPnl).toFixed(2) : '—';
+  pnlEl.className = 'stat-value ' + (totalPnl >= 0 ? 'pos' : 'neg');
+  document.getElementById('db-pnl-sub').textContent = count ? `${count} trades totalt` : 'Inga trades';
+
+  const wrEl = document.getElementById('db-wr');
+  wrEl.textContent = count ? winRate.toFixed(0) + '%' : '—';
+  wrEl.className = 'stat-value ' + (winRate >= 50 ? 'pos' : 'neg');
+  document.getElementById('db-wr-sub').textContent = count ? `${trades.filter(t => t.pnl > 0).length}W / ${trades.filter(t => t.pnl <= 0).length}L` : '—';
+
+  // risk
+  const todayLoss = getTodayLoss();
+  const drEl = document.getElementById('db-drisk');
+  drEl.textContent = '$' + Math.abs(todayLoss).toFixed(2);
+  drEl.className = 'stat-value ' + (risk.maxloss && Math.abs(todayLoss) >= risk.maxloss * 0.8 ? 'neg' : 'warn');
+  document.getElementById('db-drisk-sub').textContent = risk.maxloss ? `av $${risk.maxloss} max` : 'Ej konfigurerad';
+}
+
+async function generateDailyBrief() {
+  const el = document.getElementById('db-brief');
+  el.textContent = '⏳ Genererar daglig brief...';
+  const { totalPnl, winRate, count } = calcTradeStats();
+  const portText = holdings.length ? holdings.map(h => `${h.name}: ${h.qty}st à ${h.currentPrice}`).join(', ') : 'ingen portfölj';
+  const todayTrades = getTodayTrades().length;
+  const todayLoss = getTodayLoss();
+
+  const prompt = `Datum: ${new Date().toLocaleDateString('sv-SE')}
+Jag är ${settings.age||21} år gammal daytrader/investerare.
+Min portfölj: ${portText}
+Trading: ${count} totala trades, ${winRate.toFixed(0)}% win rate, $${totalPnl.toFixed(2)} total PnL
+Idag: ${todayTrades} trades, $${Math.abs(todayLoss).toFixed(2)} förlust hittills
+Risk-regler: max $${risk.maxloss||0}/dag, max ${risk.maxtrades||0} trades
+
+Ge mig en DAGLIG BRIEF som innehåller:
+1. 📊 Marknadsbias – bullish/bearish/neutral och varför
+2. 🎯 Viktigaste nivåer att bevaka på US100 idag (ange ungefärliga priser)
+3. ⚠️ Risker & events att vara medveten om
+4. 🔔 Rekommendation: Trade / No Trade / Var försiktig
+5. 💡 Personlig notering baserat på min trading-historik
+
+Var konkret och kort. Max 200 ord totalt.`;
+
+  const result = await callAI(prompt, 'Du är en erfaren trading coach. Ge konkret, actionable daglig brief. Svara på svenska. Var direkt.');
+  el.textContent = result;
+}
+
+// ═══════════════════════════════
+// US100 ANALYSIS
+// ═══════════════════════════════
+async function generateUS100() {
+  const el = document.getElementById('us-analysis-text');
+  const badge = document.getElementById('us-signal-badge');
+  el.textContent = '⏳ Analyserar US100 top-down...';
+  badge.innerHTML = '<span class="signal-badge signal-neutral"><div class="spinner"></div> Analyserar...</span>';
+
+  const prompt = `Datum: ${new Date().toLocaleDateString('sv-SE')}
+
+Gör en professionell top-down analys av US100/NQ futures för idag:
+
+ANALYSERA:
+- 4H: Trend, struktur, bias
+- 1H: Bekräftelse, likviditetszoner  
+- 15M: Entry-struktur, FVG, CISD
+- 5M: Precision entry
+
+FOKUSERA PÅ:
+- Liquidity sweeps (Asia high/low, London high/low)
+- Fair Value Gaps (FVG / iFVG)
+- Change in State of Delivery (CISD)
+- Smart Money Technique (SMT)
+- Volatilitet: clean trend eller chop?
+
+SLUTSATS:
+- BIAS: Bullish / Bearish / Neutral
+- SIGNAL: LONG / SHORT / NO TRADE
+- A++ SETUP: Ja / Nej (och varför)
+- 3 exakta nyckelnivåer att bevaka
+- Session-bias: Asia / London / New York
+
+FORMAT:
+Börja alltid med "BIAS: [Bullish/Bearish/Neutral]" och "SIGNAL: [LONG/SHORT/NO TRADE]" på egna rader.`;
+
+  const sys = 'Du är en ICT/SMC-specialiserad daytrader med fokus på US100/NQ. Du analyserar price action, likviditet, FVG och marknadsstruktur. Var specifik och professionell. Svara på svenska.';
+  const result = await callAI(prompt, sys);
+  el.textContent = result;
+
+  // Extract signal
+  let sig = 'neutral';
+  const low = result.toLowerCase();
+  if(low.includes('signal: long')) sig = 'long';
+  else if(low.includes('signal: short')) sig = 'short';
+  else if(low.includes('no trade') || low.includes('signal: no')) sig = 'wait';
+
+  const badges = { long: '<span class="signal-badge signal-long">▲ LONG</span>', short: '<span class="signal-badge signal-short">▼ SHORT</span>', wait: '<span class="signal-badge signal-wait">⏸ NO TRADE</span>', neutral: '<span class="signal-badge signal-neutral">◆ NEUTRAL</span>' };
+  badge.innerHTML = badges[sig];
+  document.getElementById('db-us100-signal-mini').innerHTML = badges[sig];
+
+  // TF summary
+  const tfs = ['4h','1h','15m','5m'];
+  const biasWords = ['bullish','bearish','neutral','sideway','choppy','trending'];
+  tfs.forEach(tf => {
+    const el2 = document.getElementById('tf-' + tf);
+    const idx = result.toLowerCase().indexOf(tf.replace('m','m').replace('h','h'));
+    if(idx > -1) {
+      const snippet = result.substring(idx, idx + 80);
+      const found = biasWords.find(w => snippet.toLowerCase().includes(w));
+      el2.textContent = found ? found.charAt(0).toUpperCase() + found.slice(1) : '—';
+      el2.className = found === 'bullish' || found === 'trending' ? 'pos' : found === 'bearish' ? 'neg' : '';
+    }
+  });
+
+  // A++ Checklist
+  const criteria = [
+    { label: 'HTF Bias Align', key: ['htf','bias','align','higher time'] },
+    { label: 'Liquidity Sweep', key: ['sweep','liquidity','sweep'] },
+    { label: 'Structure Shift (CISD)', key: ['cisd','structure shift','choch','bos'] },
+    { label: 'FVG Reaction', key: ['fvg','fair value','imbalance'] },
+    { label: 'Confirmation', key: ['confirm','confirmation','entry'] },
+  ];
+  const isAPlus = sig === 'long' || sig === 'short';
+  document.getElementById('aplus-badge').innerHTML = isAPlus
+    ? '<span class="signal-badge signal-long" style="font-size:0.75rem;padding:4px 12px">★ A++ Setup</span>'
+    : '<span class="signal-badge signal-wait" style="font-size:0.75rem;padding:4px 12px">Ej A++ idag</span>';
+
+  document.getElementById('aplus-checklist').innerHTML = criteria.map(c => {
+    const met = c.key.some(k => low.includes(k));
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.75rem">
+      <span style="font-size:1rem">${met ? '✅' : '⬜'}</span>
+      <span style="color:${met ? 'var(--text)' : 'var(--text3)'}">${c.label}</span>
+    </div>`;
+  }).join('');
+
+  // Levels placeholder
+  document.getElementById('us-levels').innerHTML = `
+    <div style="font-size:0.72rem;line-height:2.2">
+      <div class="flex-between"><span style="color:var(--text3)">Se analysen för exakta nivåer</span></div>
+      <div class="flex-between"><span>Resistance</span><span class="neg">Se analys ↑</span></div>
+      <div class="flex-between"><span>Support</span><span class="pos">Se analys ↑</span></div>
+      <div class="flex-between"><span>FVG Zone</span><span class="neu">Se analys ↑</span></div>
+    </div>`;
+
+  // Session
+  const sessMap = { 'sess-asia': 'asia', 'sess-london': 'london', 'sess-ny': 'new york' };
+  Object.entries(sessMap).forEach(([id, key]) => {
+    const el3 = document.getElementById(id);
+    const idx2 = low.indexOf(key);
+    if(idx2 > -1) {
+      const snip = low.substring(idx2, idx2 + 60);
+      const bias = biasWords.find(w => snip.includes(w)) || 'neutral';
+      el3.textContent = bias.charAt(0).toUpperCase() + bias.slice(1);
+      el3.className = bias === 'bullish' ? 'pos' : bias === 'bearish' ? 'neg' : '';
+    }
+  });
+
+  localStorage.setItem('td2_us100_signal', JSON.stringify({ sig, date: new Date().toDateString() }));
+}
+
+// ═══════════════════════════════
+// PORTFOLIO
+// ═══════════════════════════════
+function showAddHolding() { document.getElementById('add-holding-form').style.display = 'block'; }
+function hideAddHolding() { document.getElementById('add-holding-form').style.display = 'none'; }
+
+function addHolding() {
+  const name = document.getElementById('h-name').value.trim();
+  const qty  = parseFloat(document.getElementById('h-qty').value);
+  const avg  = parseFloat(document.getElementById('h-avg').value);
+  const cur  = parseFloat(document.getElementById('h-cur').value);
+  const type = document.getElementById('h-type').value;
+  const sector = document.getElementById('h-sector').value;
+  const port = document.getElementById('h-port').value;
+  if(!name || isNaN(qty) || isNaN(avg) || isNaN(cur)) { alert('Fyll i alla fält!'); return; }
+  holdings.push({ id: Date.now(), name, qty, avgPrice: avg, currentPrice: cur, type, sector, portfolio: port });
+  persist(); hideAddHolding(); renderPortfolio();
+}
+
+function removeHolding(id) { holdings = holdings.filter(h => h.id !== id); persist(); renderPortfolio(); }
+
+function switchPortfolio(type, el) {
+  currentPortfolio = type;
+  document.querySelectorAll('.port-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderPortfolio();
+}
+
+function renderPortfolio() {
+  const filtered = currentPortfolio === 'alla' ? holdings : holdings.filter(h => h.portfolio === currentPortfolio);
+  const total = filtered.reduce((s,h) => s + h.qty * h.currentPrice, 0);
+  const cost  = filtered.reduce((s,h) => s + h.qty * h.avgPrice, 0);
+  const pnl   = total - cost;
+  const pct   = cost ? (pnl/cost*100) : 0;
+
+  document.getElementById('port-total').textContent = total > 0 ? fmtCurr(total) : '—';
+  const pnlEl = document.getElementById('port-pnl');
+  pnlEl.textContent = total > 0 ? (pnl >= 0 ? '+' : '') + fmtCurr(pnl) : '—';
+  pnlEl.className = 'stat-value ' + (pnl >= 0 ? 'pos' : 'neg');
+  const pctEl = document.getElementById('port-pct');
+  pctEl.textContent = total > 0 ? (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%' : '—';
+  pctEl.className = 'stat-value ' + (pct >= 0 ? 'pos' : 'neg');
+
+  const tbody = document.getElementById('holdings-tbody');
+  if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty">Inga innehav i denna portfölj</div></td></tr>'; return; }
+  tbody.innerHTML = filtered.map(h => {
+    const hPnl = (h.currentPrice - h.avgPrice) * h.qty;
+    const hPct = ((h.currentPrice - h.avgPrice)/h.avgPrice*100).toFixed(1);
+    return `<tr>
+      <td><strong>${h.name}</strong>${h.sector ? `<br><span style="font-size:0.6rem;color:var(--text3)">${h.sector}</span>` : ''}</td>
+      <td><span class="tag tag-blue">${h.type}</span></td>
+      <td>${h.qty}</td>
+      <td>${fmtCurr(h.avgPrice)}</td>
+      <td>${fmtCurr(h.currentPrice)}</td>
+      <td>${fmtCurr(h.qty * h.currentPrice)}</td>
+      <td class="${hPnl >= 0 ? 'pos' : 'neg'}">${hPnl >= 0 ? '+' : ''}${fmtCurr(hPnl)}</td>
+      <td class="${hPct >= 0 ? 'pos' : 'neg'}">${hPct >= 0 ? '+' : ''}${hPct}%</td>
+      <td><button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.8rem" onclick="removeHolding(${h.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function analyzePortfolio() {
+  const el = document.getElementById('port-ai-text');
+  el.textContent = '⏳ Analyserar portfölj...';
+  if(!holdings.length) { el.textContent = 'Lägg till innehav först.'; return; }
+
+  const portText = holdings.map(h => {
+    const pct = ((h.currentPrice - h.avgPrice)/h.avgPrice*100).toFixed(1);
+    return `${h.name} (${h.type}, ${h.sector||'okänd sektor'}): ${h.qty}st, snittpris ${h.avgPrice}, nuv ${h.currentPrice}, PnL: ${pct}%`;
+  }).join('\n');
+
+  const result = await callAI(`Jag är ${settings.age||21} år. Min portfölj:\n${portText}\n\nGe konkreta åsikter för varje position:\n- Köp / Fyll på / Behåll / Minska / Sälj / Avvakta\n- Varför\n\nAnalysera sedan:\n1. Sektorbalans & koncentrationsrisk\n2. Överexponering mot något?\n3. Långsiktig potential\n4. 2-3 konkreta förbättringsförslag\n\nAvsluta med 1-2 actions jag borde ta (format: "ACTION: [ticker] – [åtgärd] – [pris/nivå]")`, 'Du är en erfaren portföljförvaltare. Var direkt och specifik. Svara på svenska.');
+  el.textContent = result;
+
+  // Parse actions
+  const lines = result.split('\n').filter(l => l.includes('ACTION:'));
+  if(lines.length) {
+    lines.forEach(line => {
+      const clean = line.replace('ACTION:', '').trim();
+      const parts = clean.split('–').map(s => s.trim());
+      if(parts.length >= 2) {
+        actions.push({ id: Date.now() + Math.random(), ticker: parts[0], desc: parts[1], level: parts[2] || '', status: 'pending', date: new Date().toISOString() });
+      }
+    });
+    persist();
+    renderActions();
+    document.getElementById('actions-card').style.display = 'block';
+  }
+}
+
+function renderActions() {
+  const el = document.getElementById('actions-list');
+  if(!actions.length) { el.innerHTML = '<div class="empty">Inga actions</div>'; return; }
+  el.innerHTML = actions.slice(0, 10).map(a => `
+    <div class="action-item" style="opacity:${a.status === 'ignored' ? '0.4' : '1'}">
+      <div class="action-ticker">${a.ticker}</div>
+      <div>
+        <div class="action-desc">${a.desc}</div>
+        ${a.level ? `<div style="font-size:0.65rem;color:var(--text3)">${a.level}</div>` : ''}
+        <div style="font-size:0.6rem;color:var(--text3);margin-top:2px">Status: ${statusLabel(a.status)}</div>
+      </div>
+      <div class="action-btns">
+        <button class="action-btn ab-done" onclick="setActionStatus(${a.id},'done')">✅</button>
+        <button class="action-btn ab-ignore" onclick="setActionStatus(${a.id},'ignored')">❌</button>
+        <button class="action-btn ab-wait" onclick="setActionStatus(${a.id},'waiting')">⏳</button>
+        <button class="action-btn ab-watch" onclick="setActionStatus(${a.id},'watching')">👀</button>
+      </div>
+    </div>`).join('');
+}
+
+function setActionStatus(id, status) {
+  const a = actions.find(x => x.id === id);
+  if(a) { a.status = status; persist(); renderActions(); }
+}
+function statusLabel(s) { return {pending:'⏳ Väntar',done:'✅ Gjort',ignored:'❌ Ignorerat',waiting:'⏳ Avvaktar',watching:'👀 Bevakning'}[s] || s; }
+
+// ═══════════════════════════════
+// JOURNAL
+// ═══════════════════════════════
+function addTrade() {
+  const date    = document.getElementById('t-date').value;
+  const dir     = document.getElementById('t-dir').value;
+  const entry   = parseFloat(document.getElementById('t-entry').value);
+  const exit    = parseFloat(document.getElementById('t-exit').value);
+  const sl      = parseFloat(document.getElementById('t-sl').value) || null;
+  const tp      = parseFloat(document.getElementById('t-tp').value) || null;
+  const size    = parseFloat(document.getElementById('t-size').value);
+  const notes   = document.getElementById('t-notes').value;
+  const setup   = document.getElementById('t-setup').value;
+  const session = document.getElementById('t-session').value;
+  const plan    = document.getElementById('t-plan').value;
+  const aplus   = document.getElementById('t-aplus').value;
+
+  if(!date || isNaN(entry) || isNaN(exit) || isNaN(size)) { alert('Fyll i datum, entry, exit och storlek!'); return; }
+
+  const pnl = dir === 'long' ? (exit - entry) / entry * size : (entry - exit) / entry * size;
+  const rr  = sl ? Math.abs(exit - entry) / Math.abs(entry - sl) : null;
+
+  trades.unshift({ id: Date.now(), date, dir, entry, exit, sl, tp, size, notes, setup, session, plan, aplus, pnl, rr });
+  persist();
+  checkRiskAfterTrade();
+  renderJournal();
+  ['t-entry','t-exit','t-sl','t-tp','t-size','t-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+function removeTrade(id) { trades = trades.filter(t => t.id !== id); persist(); renderJournal(); }
+
+function renderJournal() {
+  renderJournalRiskBlock();
+  const { totalPnl, winRate, count, avgRR } = calcTradeStats();
+  document.getElementById('j-count').textContent = count;
+  const wrEl = document.getElementById('j-wr'); wrEl.textContent = count ? winRate.toFixed(0) + '%' : '—'; wrEl.className = 'stat-value ' + (winRate >= 50 ? 'pos' : 'neg');
+  const pnlEl = document.getElementById('j-pnl'); pnlEl.textContent = count ? (totalPnl >= 0 ? '+' : '') + '$' + Math.abs(totalPnl).toFixed(2) : '—'; pnlEl.className = 'stat-value ' + (totalPnl >= 0 ? 'pos' : 'neg');
+  document.getElementById('j-rr').textContent = avgRR ? avgRR.toFixed(2) + 'R' : '—';
+
+  const el = document.getElementById('trades-list');
+  if(!trades.length) { el.innerHTML = '<div class="empty">Inga trades loggade ännu.</div>'; return; }
+  el.innerHTML = trades.slice(0, 20).map(t => `
+    <div class="trade-card">
+      <div class="trade-top">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="signal-badge ${t.dir === 'long' ? 'signal-long' : 'signal-short'}" style="font-size:0.72rem;padding:4px 10px">${t.dir === 'long' ? '▲ LONG' : '▼ SHORT'}</span>
+          <span style="font-size:0.7rem;color:var(--text3)">${t.date}</span>
+          <span class="setup-tag">${t.setup || '—'}</span>
+          <span class="tag tag-purple">${t.session || '—'}</span>
+          ${t.aplus === 'yes' ? '<span class="tag" style="background:rgba(245,158,11,0.1);color:var(--yellow)">★ A++</span>' : ''}
+          ${t.plan === 'no' ? '<span class="tag" style="background:var(--red-glow);color:var(--red)">⚠️ Bröt plan</span>' : ''}
+        </div>
+        <div class="${t.pnl >= 0 ? 'pos' : 'neg'}" style="font-family:var(--font-display);font-size:1.1rem;font-weight:600">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}</div>
+      </div>
+      <div class="trade-meta">
+        <span>Entry: <strong>${t.entry}</strong></span>
+        <span>Exit: <strong>${t.exit}</strong></span>
+        ${t.sl ? `<span>SL: <strong>${t.sl}</strong></span>` : ''}
+        ${t.tp ? `<span>TP: <strong>${t.tp}</strong></span>` : ''}
+        <span>Size: <strong>$${t.size}</strong></span>
+        ${t.rr ? `<span>RR: <strong class="neu">${t.rr.toFixed(2)}R</strong></span>` : ''}
+      </div>
+      ${t.notes ? `<div style="font-size:0.72rem;color:var(--text2);margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px">${t.notes}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-ghost btn-sm" onclick="aiReviewTrade(${t.id})">🤖 AI Review</button>
+        <button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.7rem" onclick="removeTrade(${t.id})">✕ Ta bort</button>
+      </div>
+      <div id="ai-review-${t.id}" style="display:none;margin-top:10px" class="ai-block"><div class="ai-text" id="ai-review-text-${t.id}"></div></div>
+    </div>`).join('');
+}
+
+async function aiReviewTrade(id) {
+  const t = trades.find(x => x.id === id);
+  if(!t) return;
+  const block = document.getElementById('ai-review-' + id);
+  const el = document.getElementById('ai-review-text-' + id);
+  block.style.display = 'block';
+  el.textContent = '⏳ AI analyserar traden...';
+  const prompt = `Analysera denna US100 trade:\nDatum: ${t.date} | ${t.dir.toUpperCase()} | Entry: ${t.entry} | Exit: ${t.exit} | SL: ${t.sl||'ej satt'} | TP: ${t.tp||'ej satt'} | PnL: $${t.pnl.toFixed(2)} | Setup: ${t.setup} | Session: ${t.session} | Följde plan: ${t.plan} | A++ setup: ${t.aplus}\nAnteckningar: "${t.notes||'inga'}"\n\nGe mig:\n1. Vad var bra med traden?\n2. Vad var dåligt / kan förbättras?\n3. Följde du din plan? Borde traden tagits?\n4. Var det ett A++ setup?\n5. Betyg: A/B/C/D/F + en mening varför`;
+  el.textContent = await callAI(prompt, 'Du är en ICT/SMC trade coach. Var ärlig och specifik. Svara på svenska.');
+}
+
+async function analyzeJournal() {
+  const block = document.getElementById('journal-ai-block');
+  const el = document.getElementById('journal-ai-text');
+  block.style.display = 'block';
+  el.textContent = '⏳ Analyserar alla dina trades...';
+  if(!trades.length) { el.textContent = 'Logga trades först.'; return; }
+
+  const { totalPnl, winRate, count, avgRR } = calcTradeStats();
+  const tradeText = trades.slice(0,20).map(t =>
+    `${t.date} | ${t.dir.toUpperCase()} | ${t.setup} | ${t.session} | PnL: $${t.pnl.toFixed(2)} | Plan: ${t.plan} | A++: ${t.aplus}${t.notes ? ` | Notes: "${t.notes}"` : ''}`
+  ).join('\n');
+
+  const result = await callAI(`Min trading journal:\nStatistik: ${count} trades | WR: ${winRate.toFixed(0)}% | PnL: $${totalPnl.toFixed(2)} | Avg RR: ${avgRR.toFixed(2)}R\n\n${tradeText}\n\nGe mig ÄRLIG analys:\n1. VAD JAG GÖR BRA (var specifik)\n2. VAD JAG GÖR DÅLIGT (var ärlig)\n3. MÖNSTER (setup, session, psykologi)\n4. KONKRETA förbättringar (3-5 st)\n5. Disciplin-analys: bryter jag min plan?\n6. Betyg A-F med motivering`, 'Du är senior trading coach med 20 års erfarenhet. Var ärlig. Svara på svenska.');
+  el.textContent = result;
+}
+
+function renderJournalRiskBlock() {
+  const block = document.getElementById('journal-risk-block');
+  if(risk.maxloss && getTodayLoss() <= -risk.maxloss) {
+    block.innerHTML = `<div class="stop-block"><div class="stop-icon">🛑</div><div class="stop-title">STOP TRADING</div><div class="stop-msg">Du har nått din dagliga förlustnivå på $${risk.maxloss}. Inga fler trades idag.</div></div>`;
+  } else if(risk.maxtrades && getTodayTrades().length >= risk.maxtrades) {
+    block.innerHTML = `<div class="stop-block" style="border-color:var(--yellow);animation:none"><div class="stop-icon">⚠️</div><div class="stop-title" style="color:var(--yellow)">MAX TRADES NÅTT</div><div class="stop-msg">Du har tagit ${risk.maxtrades} trades idag — din dagliga gräns.</div></div>`;
+  } else { block.innerHTML = ''; }
+}
+
+// ═══════════════════════════════
+// STATS
+// ═══════════════════════════════
+function renderStats() {
+  const { totalPnl, winRate, count } = calcTradeStats();
+  document.getElementById('s-count').textContent = count;
+  document.getElementById('s-wr').textContent = count ? winRate.toFixed(0) + '%' : '—';
+  document.getElementById('s-wr').className = 'stat-value ' + (winRate >= 50 ? 'pos' : 'neg');
+
+  // Profit factor
+  const wins = trades.filter(t => t.pnl > 0);
+  const losses = trades.filter(t => t.pnl < 0);
+  const grossWin = wins.reduce((s,t) => s + t.pnl, 0);
+  const grossLoss = Math.abs(losses.reduce((s,t) => s + t.pnl, 0));
+  const pf = grossLoss ? (grossWin / grossLoss).toFixed(2) : '∞';
+  document.getElementById('s-pf').textContent = count ? pf : '—';
+
+  // Drawdown
+  let peak = 0, dd = 0, running = 0;
+  [...trades].reverse().forEach(t => { running += t.pnl; if(running > peak) peak = running; if(peak - running > dd) dd = peak - running; });
+  document.getElementById('s-dd').textContent = count ? '-$' + dd.toFixed(2) : '—';
+
+  renderEquityChartStats();
+  renderLSChart();
+  renderSetupStats();
+  renderSessionStats();
+  renderPlanStats();
+}
+
+function renderSetupStats() {
+  const el = document.getElementById('best-setups');
+  if(!trades.length) return;
+  const bySetup = {};
+  trades.forEach(t => { if(!bySetup[t.setup]) bySetup[t.setup] = []; bySetup[t.setup].push(t.pnl); });
+  const sorted = Object.entries(bySetup).map(([s, pnls]) => ({ setup: s, avg: pnls.reduce((a,b)=>a+b,0)/pnls.length, count: pnls.length })).sort((a,b) => b.avg - a.avg);
+  el.innerHTML = sorted.map(s => `<div class="flex-between" style="padding:6px 0;border-bottom:1px solid var(--border);font-size:0.75rem"><span class="setup-tag">${s.setup}</span><span class="${s.avg>=0?'pos':'neg'}">${s.avg>=0?'+':''}$${s.avg.toFixed(2)} avg (${s.count})</span></div>`).join('');
+}
+
+function renderSessionStats() {
+  const el = document.getElementById('best-sessions');
+  if(!trades.length) return;
+  const bySess = {};
+  trades.forEach(t => { const s = t.session||'unknown'; if(!bySess[s]) bySess[s] = []; bySess[s].push(t.pnl); });
+  el.innerHTML = Object.entries(bySess).map(([s, pnls]) => {
+    const avg = pnls.reduce((a,b)=>a+b,0)/pnls.length;
+    const wr = (pnls.filter(p=>p>0).length/pnls.length*100).toFixed(0);
+    return `<div class="flex-between" style="padding:6px 0;border-bottom:1px solid var(--border);font-size:0.75rem"><span style="text-transform:capitalize">${s}</span><span class="${avg>=0?'pos':'neg'}">${wr}% WR · ${avg>=0?'+':''}$${avg.toFixed(2)}</span></div>`;
+  }).join('');
+}
+
+function renderPlanStats() {
+  const el = document.getElementById('plan-stats');
+  if(!trades.length) return;
+  const followed = trades.filter(t=>t.plan==='yes');
+  const broken = trades.filter(t=>t.plan==='no');
+  const avgFollowed = followed.length ? followed.reduce((s,t)=>s+t.pnl,0)/followed.length : 0;
+  const avgBroken = broken.length ? broken.reduce((s,t)=>s+t.pnl,0)/broken.length : 0;
+  el.innerHTML = `
+    <div style="font-size:0.75rem;line-height:2.2">
+      <div class="flex-between"><span>✅ Följde plan (${followed.length})</span><span class="${avgFollowed>=0?'pos':'neg'}">${avgFollowed>=0?'+':''}$${avgFollowed.toFixed(2)} avg</span></div>
+      <div class="flex-between"><span>❌ Bröt plan (${broken.length})</span><span class="${avgBroken>=0?'pos':'neg'}">${avgBroken>=0?'+':''}$${avgBroken.toFixed(2)} avg</span></div>
+      <div class="progress" style="margin-top:8px"><div class="progress-fill" style="width:${followed.length/(trades.length||1)*100}%;background:var(--green)"></div></div>
+      <div style="font-size:0.62rem;color:var(--text3);margin-top:4px">${(followed.length/(trades.length||1)*100).toFixed(0)}% disciplin-rate</div>
+    </div>`;
+}
+
+async function analyzePatterns() {
+  const el = document.getElementById('patterns-text');
+  el.textContent = '⏳ Hittar mönster...';
+  if(!trades.length) { el.textContent = 'Logga trades först.'; return; }
+  const { winRate, count } = calcTradeStats();
+  const tradeText = trades.slice(0,20).map(t => `${t.dir} | ${t.setup} | ${t.session} | PnL:$${t.pnl.toFixed(2)} | plan:${t.plan}`).join('\n');
+  el.textContent = await callAI(`Trading mönsteranalys:\n${tradeText}\n\nHitta dolda mönster:\n1. När presterar jag BÄST? (session, setup, riktning)\n2. När presterar jag SÄMST?\n3. Psykologiska mönster?\n4. 3 konkreta saker att ändra nu\n5. Din edge: vad är din starkaste setup?`);
+}
+
+// ═══════════════════════════════
+// CHARTS
+// ═══════════════════════════════
+function buildEquityData() {
+  const sorted = [...trades].reverse();
+  let running = settings.startcap || 0;
+  const labels = [];
+  const data = [];
+  sorted.forEach(t => { running += t.pnl; labels.push(t.date); data.push(parseFloat(running.toFixed(2))); });
+  if(!labels.length) { labels.push('Start'); data.push(running); }
+  return { labels, data };
+}
+
+function renderEquityChart() {
+  const ctx = document.getElementById('equity-chart');
+  if(!ctx) return;
+  if(equityChart) equityChart.destroy();
+  const { labels, data } = buildEquityData();
+  const isPos = data[data.length-1] >= data[0];
+  equityChart = new Chart(ctx, chartConfig(labels, data, isPos));
+}
+
+function renderEquityChartStats() {
+  const ctx = document.getElementById('stats-equity-chart');
+  if(!ctx) return;
+  if(statsEquityChart) statsEquityChart.destroy();
+  const { labels, data } = buildEquityData();
+  const isPos = data[data.length-1] >= data[0];
+  statsEquityChart = new Chart(ctx, chartConfig(labels, data, isPos));
+}
+
+function renderLSChart() {
+  const ctx = document.getElementById('ls-chart');
+  if(!ctx) return;
+  if(lsChart) lsChart.destroy();
+  const longs = trades.filter(t=>t.dir==='long');
+  const shorts = trades.filter(t=>t.dir==='short');
+  const lwr = longs.length ? (longs.filter(t=>t.pnl>0).length/longs.length*100).toFixed(0) : 0;
+  const swr = shorts.length ? (shorts.filter(t=>t.pnl>0).length/shorts.length*100).toFixed(0) : 0;
+  lsChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: [`Long (${lwr}% WR)`, `Short (${swr}% WR)`], datasets: [{ data: [longs.length||1, shorts.length||1], backgroundColor: ['rgba(16,185,129,0.7)', 'rgba(239,68,68,0.7)'], borderColor: ['#10b981','#ef4444'], borderWidth: 1 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { labels: { color:'#8ba4be', font:{family:"'JetBrains Mono'"} } } }, cutout:'65%' }
+  });
+}
+
+function chartConfig(labels, data, isPos) {
+  const color = isPos ? '#10b981' : '#ef4444';
+  return {
+    type: 'line',
+    data: { labels, datasets: [{ data, borderColor: color, backgroundColor: isPos ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)', fill: true, tension: 0.4, pointRadius: labels.length > 20 ? 0 : 3, pointBackgroundColor: color, borderWidth: 2 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}} }, scales: { x:{ticks:{color:'#4a6278',maxTicksLimit:6,font:{size:10}},grid:{color:'rgba(26,40,64,0.5)'}}, y:{ticks:{color:'#4a6278',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(26,40,64,0.5)'}} } }
+  };
+}
+
+function setChartPeriod(period) {
+  const ctx = document.getElementById('equity-chart');
+  if(!ctx) return;
+  if(equityChart) equityChart.destroy();
+  const sorted = [...trades].reverse();
+  let filtered = sorted;
+  if(period === 'week') filtered = sorted.filter(t => new Date(t.date) >= new Date(Date.now()-7*86400000));
+  if(period === 'month') filtered = sorted.filter(t => new Date(t.date) >= new Date(Date.now()-30*86400000));
+  let running = settings.startcap || 0;
+  const labels = [], data = [];
+  filtered.forEach(t => { running += t.pnl; labels.push(t.date); data.push(parseFloat(running.toFixed(2))); });
+  if(!labels.length) { labels.push('—'); data.push(running); }
+  const isPos = data[data.length-1] >= data[0];
+  equityChart = new Chart(ctx, chartConfig(labels, data, isPos));
+}
+
+// ═══════════════════════════════
+// RISK MANAGEMENT
+// ═══════════════════════════════
+function saveRisk() {
+  risk.maxloss   = parseFloat(document.getElementById('r-maxloss').value) || 0;
+  risk.maxtrades = parseInt(document.getElementById('r-maxtrades').value) || 0;
+  risk.pertrade  = parseFloat(document.getElementById('r-pertrade').value) || 0;
+  persist(); renderRisk(); updateRiskDashboard();
+  alert('✅ Riskregler sparade!');
+}
+
+function getTodayTrades() {
+  const today = new Date().toISOString().split('T')[0];
+  return trades.filter(t => t.date === today);
+}
+
+function getTodayLoss() {
+  return getTodayTrades().reduce((s,t) => s + (t.pnl < 0 ? t.pnl : 0), 0);
+}
+
+function checkRiskAfterTrade() {
+  const todayLoss = Math.abs(getTodayLoss());
+  const todayCount = getTodayTrades().length;
+  if(risk.maxloss && todayLoss >= risk.maxloss) {
+    document.getElementById('risk-stop-block').style.display = 'block';
+    document.getElementById('stop-reason').textContent = `Du har förlorat $${todayLoss.toFixed(2)} idag — din dagliga gräns på $${risk.maxloss} är nådd.`;
+  }
+}
+
+function renderRisk() {
+  // Load saved values into form
+  if(risk.maxloss) document.getElementById('r-maxloss').value = risk.maxloss;
+  if(risk.maxtrades) document.getElementById('r-maxtrades').value = risk.maxtrades;
+  if(risk.pertrade) document.getElementById('r-pertrade').value = risk.pertrade;
+
+  const todayLoss = Math.abs(getTodayLoss());
+  const todayCount = getTodayTrades().length;
+  const lossUsed = risk.maxloss ? (todayLoss/risk.maxloss*100) : 0;
+  const tradeUsed = risk.maxtrades ? (todayCount/risk.maxtrades*100) : 0;
+
+  const isStop = (risk.maxloss && todayLoss >= risk.maxloss) || (risk.maxtrades && todayCount >= risk.maxtrades);
+  document.getElementById('risk-stop-block').style.display = isStop ? 'block' : 'none';
+
+  document.getElementById('risk-today-status').innerHTML = risk.maxloss ? `
+    <div style="font-size:0.72rem;margin-bottom:12px">
+      <div class="flex-between" style="margin-bottom:4px"><span style="color:var(--text3)">Daglig förlust</span><span class="${todayLoss>0?'neg':''}">${todayLoss>0?'-':''}$${todayLoss.toFixed(2)} / $${risk.maxloss}</span></div>
+      <div class="risk-meter"><div class="risk-fill-main" style="width:${Math.min(lossUsed,100)}%;background:${lossUsed>80?'var(--red)':lossUsed>50?'var(--yellow)':'var(--green)'}"></div></div>
+    </div>
+    <div style="font-size:0.72rem">
+      <div class="flex-between" style="margin-bottom:4px"><span style="color:var(--text3)">Trades idag</span><span>${todayCount} / ${risk.maxtrades||'∞'}</span></div>
+      <div class="risk-meter"><div class="risk-fill-main" style="width:${Math.min(tradeUsed,100)}%;background:${tradeUsed>80?'var(--red)':tradeUsed>50?'var(--yellow)':'var(--green)'}"></div></div>
+    </div>` : '<div class="empty" style="padding:12px 0">Konfigurera riskregler</div>';
+
+  updateRiskDashboard();
+}
+
+function updateRiskDashboard() {
+  const todayLoss = Math.abs(getTodayLoss());
+  const lossUsed = risk.maxloss ? (todayLoss/risk.maxloss*100) : 0;
+  const fillEl = document.getElementById('sb-risk-fill');
+  if(fillEl) { fillEl.style.width = Math.min(lossUsed,100) + '%'; fillEl.style.background = lossUsed>80?'var(--red)':lossUsed>50?'var(--yellow)':'var(--green)'; }
+  const usedEl = document.getElementById('sb-risk-used'); if(usedEl) usedEl.textContent = '-$' + todayLoss.toFixed(2);
+  const maxEl = document.getElementById('sb-risk-max'); if(maxEl) maxEl.textContent = '$' + (risk.maxloss||0) + ' max';
+
+  const badge = document.getElementById('risk-status-badge');
+  if(badge) {
+    if(lossUsed >= 100) badge.innerHTML = '<span class="signal-badge signal-short" style="font-size:0.65rem;padding:3px 8px">🛑 STOP</span>';
+    else if(lossUsed >= 80) badge.innerHTML = '<span class="signal-badge signal-wait" style="font-size:0.65rem;padding:3px 8px">⚠️ Nära gräns</span>';
+    else badge.innerHTML = '<span class="signal-badge signal-long" style="font-size:0.65rem;padding:3px 8px">✅ OK</span>';
+  }
+
+  const panel = document.getElementById('risk-panel-content');
+  if(panel && risk.maxloss) {
+    panel.innerHTML = `<div style="font-size:0.72rem">
+      <div class="flex-between" style="margin-bottom:6px"><span style="color:var(--text3)">Förlorat idag</span><span class="neg">-$${todayLoss.toFixed(2)}</span></div>
+      <div class="risk-meter"><div class="risk-fill-main" style="width:${Math.min(lossUsed,100)}%;background:${lossUsed>80?'var(--red)':lossUsed>50?'var(--yellow)':'var(--green)'}"></div></div>
+      <div style="font-size:0.62rem;color:var(--text3);margin-top:4px">${lossUsed.toFixed(0)}% av daglig gräns</div>
+    </div>`;
+  }
+}
+
+async function getDisciplineCoach() {
+  const el = document.getElementById('discipline-text');
+  el.textContent = '⏳ Analyserar din disciplin...';
+  const todayT = getTodayTrades();
+  const brokenPlan = trades.filter(t=>t.plan==='no').length;
+  const total = trades.length;
+  const prompt = `Analysera min trading-disciplin:\nTotalt trades: ${total}\nBrytningar mot plan: ${brokenPlan} (${total?((brokenPlan/total)*100).toFixed(0):0}%)\nTrades idag: ${todayT.length}${risk.maxtrades?` / max ${risk.maxtrades}`:''}\nDaglig förlust idag: $${Math.abs(getTodayLoss()).toFixed(2)}${risk.maxloss?` / max $${risk.maxloss}`:''}\n\nGe mig:\n1. Bryter jag mina regler? Var ärlig.\n2. Overtradear jag?\n3. Vad bör jag göra annorlunda?\n4. Behöver jag sluta tradera idag?`;
+  el.textContent = await callAI(prompt, 'Du är en strikt trading coach. Var ärlig och direkt. Ingen smickring. Svara på svenska.');
+}
+
+// ═══════════════════════════════
+// GOALS
+// ═══════════════════════════════
+function showAddGoal() { document.getElementById('add-goal-form').style.display = 'block'; }
+function hideAddGoal() { document.getElementById('add-goal-form').style.display = 'none'; }
+
+function addGoal() {
+  const name = document.getElementById('g-name').value.trim();
+  const type = document.getElementById('g-type').value;
+  const target = parseFloat(document.getElementById('g-target').value);
+  const current = parseFloat(document.getElementById('g-current').value) || 0;
+  const deadline = document.getElementById('g-deadline').value;
+  if(!name || isNaN(target)) { alert('Fyll i namn och målvärde!'); return; }
+  goals.push({ id: Date.now(), name, type, target, current, deadline });
+  persist(); hideAddGoal(); renderGoals();
+}
+
+function removeGoal(id) { goals = goals.filter(g => g.id !== id); persist(); renderGoals(); }
+
+function renderGoals() {
+  const el = document.getElementById('goals-list');
+  if(!goals.length) { el.innerHTML = '<div class="empty">Inga mål satta ännu.</div>'; return; }
+  el.innerHTML = goals.map(g => {
+    const pct = Math.min((g.current/g.target)*100, 100);
+    const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - new Date()) / 86400000) : null;
+    return `<div class="goal-card">
+      <div class="goal-header">
+        <div>
+          <div class="goal-name">${g.name}</div>
+          <div style="font-size:0.62rem;color:var(--text3);margin-top:2px">${g.type}${daysLeft !== null ? ` · ${daysLeft > 0 ? daysLeft + ' dagar kvar' : 'Deadline passerad'}` : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="goal-pct ${pct>=100?'pos':'neu'}">${pct.toFixed(0)}%</div>
+          <div style="font-size:0.65rem;color:var(--text3)">${g.current} / ${g.target}</div>
+        </div>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.68rem" onclick="removeGoal(${g.id})">✕ Ta bort</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Savings
+  const ms = savings;
+  if(ms.monthly || ms.invested || ms.start) {
+    document.getElementById('savings-summary').textContent = `Månadssparande: ${ms.monthly||0} kr/mån · Totalt investerat: ${ms.invested||0} kr · Startkapital: ${ms.start||0} kr`;
+  }
+}
+
+function saveSavings() {
+  savings.monthly = parseFloat(document.getElementById('monthly-save').value) || 0;
+  savings.invested = parseFloat(document.getElementById('total-invested').value) || 0;
+  savings.start = parseFloat(document.getElementById('start-capital').value) || 0;
+  persist(); renderGoals();
+}
+
+// ═══════════════════════════════
+// SETTINGS
+// ═══════════════════════════════
+function loadSettings() {
+  document.getElementById('s-anthropic').value = settings.anthropic ? '••••••••••••' : '';
+  document.getElementById('s-news').value = settings.newskey ? '••••••••••••' : '';
+  document.getElementById('s-age').value = settings.age || 21;
+  document.getElementById('s-currency').value = settings.currency || 'SEK';
+  document.getElementById('s-startcap').value = settings.startcap || '';
+}
+
+function saveSettings() {
+  const a = document.getElementById('s-anthropic').value;
+  const n = document.getElementById('s-news').value;
+  if(a && !a.includes('•')) settings.anthropic = a;
+  if(n && !n.includes('•')) settings.newskey = n;
+  settings.age = parseInt(document.getElementById('s-age').value) || 21;
+  settings.currency = document.getElementById('s-currency').value;
+  settings.startcap = parseFloat(document.getElementById('s-startcap').value) || 0;
+  persist(); alert('✅ Sparat!');
+}
+
+function clearData() {
+  if(confirm('Rensa ALL data (trades, portfölj, mål)?')) {
+    holdings=[]; trades=[]; goals=[]; actions=[];
+    persist(); alert('Data rensad.');
+  }
+}
+
+// ═══════════════════════════════
+// HELPERS
+// ═══════════════════════════════
+function calcTradeStats() {
+  if(!trades.length) return { totalPnl:0, winRate:0, count:0, avgRR:0 };
+  const totalPnl = trades.reduce((s,t) => s+t.pnl, 0);
+  const wins = trades.filter(t => t.pnl > 0).length;
+  const winRate = (wins/trades.length)*100;
+  const rrs = trades.filter(t=>t.rr).map(t=>t.rr);
+  const avgRR = rrs.length ? rrs.reduce((a,b)=>a+b,0)/rrs.length : 0;
+  return { totalPnl, winRate, count: trades.length, avgRR };
+}
+
+function fmtCurr(n) {
+  const curr = settings.currency || 'SEK';
+  const c = curr === 'USD' ? 'USD' : curr === 'EUR' ? 'EUR' : 'SEK';
+  return new Intl.NumberFormat('sv-SE', { style:'currency', currency:c, minimumFractionDigits:0, maximumFractionDigits:2 }).format(n);
+}
+
+// ═══════════════════════════════
+// INIT
+// ═══════════════════════════════
+document.getElementById('t-date').value = new Date().toISOString().split('T')[0];
+initDashboard();
+renderActions();
+</script>
+</body>
+</html>
