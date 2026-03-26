@@ -395,16 +395,18 @@ tr:hover td { background:rgba(14,165,233,0.02); }
 
   <div class="nav-section-label">Huvud</div>
   <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">⬡</span> Dashboard</div>
-  <div class="nav-item" onclick="showPage('us100',this)"><span class="nav-icon">📈</span> US100 Analys</div>
   <div class="nav-item" onclick="showPage('portfolio',this)"><span class="nav-icon">💼</span> Portfölj</div>
-  <div class="nav-item" onclick="showPage('journal',this)"><span class="nav-icon">📓</span> Trade Journal</div>
+  <div class="nav-item" onclick="showPage('watchlist',this)"><span class="nav-icon">👁</span> Watchlist</div>
 
-  <div class="nav-section-label">Analys</div>
+  <div class="nav-section-label">Day Trading</div>
+  <div class="nav-item" onclick="showPage('us100',this)"><span class="nav-icon">📈</span> US100 Analys</div>
+  <div class="nav-item" onclick="showPage('checklist',this)"><span class="nav-icon">✅</span> Pre-market</div>
+  <div class="nav-item" onclick="showPage('journal',this)"><span class="nav-icon">📓</span> Trade Journal</div>
   <div class="nav-item" onclick="showPage('stats',this)"><span class="nav-icon">📊</span> Statistik</div>
+
+  <div class="nav-section-label">Övrigt</div>
   <div class="nav-item" onclick="showPage('news',this)"><span class="nav-icon">📰</span> Nyheter</div>
   <div class="nav-item" onclick="showPage('goals',this)"><span class="nav-icon">🎯</span> Mål</div>
-
-  <div class="nav-section-label">System</div>
   <div class="nav-item" onclick="showPage('risk',this)"><span class="nav-icon">⚠️</span> Risk</div>
   <div class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span> Inställningar</div>
 
@@ -936,6 +938,106 @@ tr:hover td { background:rgba(14,165,233,0.02); }
       </div>
     </div><!-- /risk -->
 
+    <!-- ═══════════ PRE-MARKET CHECKLISTA ═══════════ -->
+    <div class="page" id="page-checklist">
+      <div class="section-header">
+        <div class="section-title">Pre-market Checklista</div>
+        <div style="font-size:0.7rem;color:var(--text3)">Bocka av INNAN du öppnar första traden</div>
+      </div>
+
+      <!-- STREAK -->
+      <div class="grid g4" style="margin-bottom:16px">
+        <div class="card stat-card">
+          <div class="stat-label">Vinststreak 🔥</div>
+          <div class="stat-value pos" id="streak-win">0</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Förluststreak 💀</div>
+          <div class="stat-value neg" id="streak-loss">0</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Trades idag</div>
+          <div class="stat-value neu" id="streak-today">0</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">PnL idag</div>
+          <div class="stat-value" id="streak-pnl-today">$0</div>
+        </div>
+      </div>
+
+      <!-- STREAK WARNING -->
+      <div id="streak-warning" style="display:none;margin-bottom:16px">
+        <div class="stop-block" style="padding:14px;border-color:var(--red)">
+          <div style="font-size:1.5rem">💀</div>
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--red);font-size:1rem">3 FÖRLUSTER I RAD</div>
+          <div class="stop-msg">Sluta tradera idag. Din edge fungerar inte just nu. Vila och kom tillbaka imorgon.</div>
+        </div>
+      </div>
+
+      <!-- CHECKLIST -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">Daglig Checklista</div>
+          <button class="btn btn-ghost btn-sm" onclick="resetChecklist()">🔄 Återställ</button>
+        </div>
+        <div id="checklist-items"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div id="checklist-status" style="font-size:0.75rem;color:var(--text3)">0/0 avklarade</div>
+          <div id="checklist-go" style="display:none"><span class="signal-badge signal-long">✅ Redo att tradera</span></div>
+          <div id="checklist-nogo" style="display:none"><span class="signal-badge signal-wait">⏳ Bocka av allt först</span></div>
+        </div>
+      </div>
+
+      <!-- CONFIDENCE METER -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Confidence Meter – Hur säker är du idag?</div></div>
+        <div style="padding:8px 0">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<button onclick="setConfidence(${n})" id="conf-btn-${n}" class="btn btn-ghost btn-sm" style="min-width:36px">${n}</button>`).join('')}
+          </div>
+          <div id="conf-result" style="font-size:0.75rem;color:var(--text3)">Välj din confidence level innan du tradear</div>
+          <div id="conf-ai" style="margin-top:8px;font-size:0.75rem;color:var(--text2)"></div>
+        </div>
+      </div>
+
+      <!-- MONTHLY OVERVIEW -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📅 Månadsöversikt</div></div>
+        <div id="monthly-overview"><div class="empty">Logga trades för att se månadsöversikt</div></div>
+      </div>
+    </div><!-- /checklist -->
+
+    <!-- ═══════════ WATCHLIST ═══════════ -->
+    <div class="page" id="page-watchlist">
+      <div class="section-header">
+        <div class="section-title">Watchlist</div>
+        <button class="btn btn-sm" onclick="showAddWatch()">+ Lägg till</button>
+      </div>
+
+      <!-- ADD FORM -->
+      <div class="card" id="add-watch-form" style="display:none;margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Lägg till bevakning</div><button class="btn btn-ghost btn-sm" onclick="hideAddWatch()">✕</button></div>
+        <div style="position:relative;margin-bottom:10px">
+          <label>Sök aktie</label>
+          <input id="w-search" placeholder="Sök t.ex. Apple, Nvidia..." oninput="searchWatchStock(this.value)" autocomplete="off" />
+          <div id="watch-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;max-height:200px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
+        </div>
+        <div class="form-row fr3">
+          <div><label>Namn</label><input id="w-name" placeholder="Apple" /></div>
+          <div><label>Köpnivå ($)</label><input id="w-level" type="number" placeholder="170" step="any" /></div>
+          <div><label>Anledning</label><input id="w-reason" placeholder="Bryter motstånd, FVG..." /></div>
+        </div>
+        <button class="btn" onclick="addWatch()">Lägg till</button>
+      </div>
+
+      <div id="watchlist-items"><div class="empty">Inga aktier bevakade ännu.</div></div>
+
+      <div class="ai-block mt16" id="watch-ai-block" style="display:none">
+        <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI Watchlist-analys</div><button class="btn btn-sm" style="margin-left:auto" onclick="analyzeWatchlist()">Analysera</button></div>
+        <div class="ai-text" id="watch-ai-text">AI analyserar dina bevakade aktier och ger köp/avvakta råd.</div>
+      </div>
+    </div><!-- /watchlist -->
+
     <!-- ═══════════ SETTINGS ═══════════ -->
     <div class="page" id="page-settings">
       <div class="section-header"><div class="section-title">Inställningar</div></div>
@@ -970,7 +1072,7 @@ tr:hover td { background:rgba(14,165,233,0.02); }
 // ═══════════════════════════════
 // CONFIG – API KEYS INBYGGDA
 // ═══════════════════════════════
-const ANTHROPIC_KEY = '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';
+const ANTHROPIC_KEY = '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';
 const NEWS_KEY = '0670e1fb7ad844cbb9d1d23dd34bea8c';
 
 // ═══════════════════════════════
@@ -1002,7 +1104,7 @@ function persist() {
 // ═══════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════
-const pageTitles = { dashboard:'Dashboard', us100:'US100 Analys', portfolio:'Portfölj', journal:'Trade Journal', stats:'Statistik', news:'Nyheter', goals:'Mål & Tracking', risk:'Risk Management', settings:'Inställningar' };
+const pageTitles = { dashboard:'Dashboard', us100:'US100 Day Trading', portfolio:'Portfölj', journal:'Trade Journal', stats:'Statistik', news:'Nyheter', goals:'Mål & Tracking', risk:'Risk Management', settings:'Inställningar', checklist:'Pre-market Checklista', watchlist:'Watchlist' };
 
 function showPage(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1014,6 +1116,8 @@ function showPage(id, el) {
   // page init
   if(id === 'dashboard') initDashboard();
   if(id === 'us100') { loadUS100News(); loadEconomicCalendar(); }
+  if(id === 'checklist') renderChecklist();
+  if(id === 'watchlist') renderWatchlist();
   if(id === 'portfolio') renderPortfolio();
   if(id === 'journal') renderJournal();
   if(id === 'stats') renderStats();
@@ -2161,6 +2265,280 @@ function fmtCurr(n) {
   const curr = settings.currency || 'SEK';
   const c = curr === 'USD' ? 'USD' : curr === 'EUR' ? 'EUR' : 'SEK';
   return new Intl.NumberFormat('sv-SE', { style:'currency', currency:c, minimumFractionDigits:0, maximumFractionDigits:2 }).format(n);
+}
+
+// ═══════════════════════════════
+// CHECKLIST & STREAK
+// ═══════════════════════════════
+const CHECKLIST_ITEMS = [
+  { id:'c1', text:'Kollat economic calendar & viktiga nyheter idag', category:'Förberedelse' },
+  { id:'c2', text:'Genererat US100 top-down analys', category:'Förberedelse' },
+  { id:'c3', text:'HTF bias är tydlig (inte choppy/range)', category:'Analys' },
+  { id:'c4', text:'Vet var viktiga stöd/motstånd ligger', category:'Analys' },
+  { id:'c5', text:'Inga high-impact news närmaste timmen', category:'Risk' },
+  { id:'c6', text:'Daglig risk är satt och konfigurerad', category:'Risk' },
+  { id:'c7', text:'Inte på förluststreak 3+ i rad', category:'Psykologi' },
+  { id:'c8', text:'Confidence level 7+ idag', category:'Psykologi' },
+  { id:'c9', text:'Vet exakt vilken setup jag letar efter', category:'Plan' },
+  { id:'c10', text:'Har tydlig entry, SL och TP plan', category:'Plan' },
+];
+
+let checklistState = JSON.parse(localStorage.getItem('td2_checklist') || '{}');
+let watchlist = JSON.parse(localStorage.getItem('td2_watchlist') || '[]');
+let confidence = parseInt(localStorage.getItem('td2_confidence') || '0');
+
+function renderChecklist() {
+  updateStreaks();
+  renderChecklistItems();
+  renderMonthlyOverview();
+  if(confidence) highlightConfidence(confidence);
+}
+
+function renderChecklistItems() {
+  const today = new Date().toDateString();
+  if(checklistState.date !== today) { checklistState = { date: today }; localStorage.setItem('td2_checklist', JSON.stringify(checklistState)); }
+
+  const el = document.getElementById('checklist-items');
+  const categories = [...new Set(CHECKLIST_ITEMS.map(i => i.category))];
+
+  el.innerHTML = categories.map(cat => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);margin-bottom:6px">${cat}</div>
+      ${CHECKLIST_ITEMS.filter(i => i.category === cat).map(item => {
+        const checked = checklistState[item.id];
+        return `<div onclick="toggleCheck('${item.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:${checked ? 'rgba(16,185,129,0.06)' : 'var(--surface2)'};border:1px solid ${checked ? 'rgba(16,185,129,0.2)' : 'var(--border)'};transition:all 0.15s">
+          <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${checked ? 'var(--green)' : 'var(--border2)'};background:${checked ? 'var(--green)' : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.7rem">${checked ? '✓' : ''}</div>
+          <span style="font-size:0.75rem;color:${checked ? 'var(--text2)' : 'var(--text)'}${checked ? ';text-decoration:line-through' : ''}">${item.text}</span>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+
+  updateChecklistStatus();
+}
+
+function toggleCheck(id) {
+  checklistState[id] = !checklistState[id];
+  localStorage.setItem('td2_checklist', JSON.stringify(checklistState));
+  renderChecklistItems();
+}
+
+function updateChecklistStatus() {
+  const total = CHECKLIST_ITEMS.length;
+  const done = CHECKLIST_ITEMS.filter(i => checklistState[i.id]).length;
+  document.getElementById('checklist-status').textContent = `${done}/${total} avklarade`;
+  const allDone = done === total;
+  document.getElementById('checklist-go').style.display = allDone ? 'block' : 'none';
+  document.getElementById('checklist-nogo').style.display = allDone ? 'none' : 'block';
+}
+
+function resetChecklist() {
+  checklistState = { date: new Date().toDateString() };
+  localStorage.setItem('td2_checklist', JSON.stringify(checklistState));
+  renderChecklistItems();
+}
+
+function updateStreaks() {
+  const sorted = [...trades].sort((a,b) => new Date(b.date) - new Date(a.date));
+  let winStreak = 0, lossStreak = 0;
+  for(const t of sorted) {
+    if(t.pnl > 0) { if(lossStreak === 0) winStreak++; else break; }
+    else { if(winStreak === 0) lossStreak++; else break; }
+  }
+
+  document.getElementById('streak-win').textContent = winStreak;
+  document.getElementById('streak-loss').textContent = lossStreak;
+
+  const todayTrades = getTodayTrades();
+  const todayPnl = todayTrades.reduce((s,t) => s+t.pnl, 0);
+  document.getElementById('streak-today').textContent = todayTrades.length;
+  const pnlEl = document.getElementById('streak-pnl-today');
+  pnlEl.textContent = (todayPnl >= 0 ? '+' : '') + '$' + todayPnl.toFixed(2);
+  pnlEl.className = 'stat-value ' + (todayPnl >= 0 ? 'pos' : 'neg');
+
+  // Streak warning
+  document.getElementById('streak-warning').style.display = lossStreak >= 3 ? 'block' : 'none';
+}
+
+// ═══════════════════════════════
+// CONFIDENCE METER
+// ═══════════════════════════════
+function setConfidence(n) {
+  confidence = n;
+  localStorage.setItem('td2_confidence', n);
+  highlightConfidence(n);
+
+  const msgs = {
+    1:'🔴 Confidence 1/10 — Håll dig borta från marknaden idag.',
+    2:'🔴 Confidence 2/10 — För låg. Vila och kom tillbaka imorgon.',
+    3:'🟠 Confidence 3/10 — Mycket låg. Om du trader, gå liten.',
+    4:'🟠 Confidence 4/10 — Under genomsnittet. Halvera din position.',
+    5:'🟡 Confidence 5/10 — Okej. Håll dig till A++ setups.',
+    6:'🟡 Confidence 6/10 — Bra nog. Var selektiv med setups.',
+    7:'🟢 Confidence 7/10 — Bra dag. Följ planen.',
+    8:'🟢 Confidence 8/10 — Stark dag. Trade dina setups med övertygelse.',
+    9:'🟢 Confidence 9/10 — Mycket bra. Du är i flow.',
+    10:'🚀 Confidence 10/10 — Toppdag. Var inte övermodig!'
+  };
+  document.getElementById('conf-result').textContent = msgs[n];
+
+  // Update checklist item c8 automatically
+  checklistState['c8'] = n >= 7;
+  localStorage.setItem('td2_checklist', JSON.stringify(checklistState));
+  renderChecklistItems();
+}
+
+function highlightConfidence(n) {
+  for(let i=1;i<=10;i++) {
+    const btn = document.getElementById('conf-btn-' + i);
+    if(!btn) continue;
+    if(i <= n) {
+      const color = n <= 3 ? 'var(--red)' : n <= 6 ? 'var(--yellow)' : 'var(--green)';
+      btn.style.background = color; btn.style.color = '#000'; btn.style.borderColor = color;
+    } else {
+      btn.style.background = 'transparent'; btn.style.color = 'var(--text2)'; btn.style.borderColor = 'var(--border)';
+    }
+  }
+}
+
+// ═══════════════════════════════
+// MONTHLY OVERVIEW
+// ═══════════════════════════════
+function renderMonthlyOverview() {
+  const el = document.getElementById('monthly-overview');
+  if(!trades.length) { el.innerHTML = '<div class="empty">Logga trades för att se månadsöversikt</div>'; return; }
+
+  const byMonth = {};
+  trades.forEach(t => {
+    const key = t.date.substring(0,7); // YYYY-MM
+    if(!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(t);
+  });
+
+  const months = Object.keys(byMonth).sort().reverse();
+  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%">
+    <thead><tr><th>Månad</th><th>Trades</th><th>Win Rate</th><th>PnL</th><th>Bäst</th><th>Sämst</th></tr></thead>
+    <tbody>
+    ${months.map(m => {
+      const ts = byMonth[m];
+      const pnl = ts.reduce((s,t) => s+t.pnl, 0);
+      const wr = (ts.filter(t=>t.pnl>0).length/ts.length*100).toFixed(0);
+      const best = Math.max(...ts.map(t=>t.pnl));
+      const worst = Math.min(...ts.map(t=>t.pnl));
+      const date = new Date(m + '-01');
+      const label = date.toLocaleDateString('sv-SE', { month:'long', year:'numeric' });
+      return `<tr>
+        <td><strong>${label}</strong></td>
+        <td>${ts.length}</td>
+        <td class="${wr>=50?'pos':'neg'}">${wr}%</td>
+        <td class="${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td>
+        <td class="pos">+$${best.toFixed(2)}</td>
+        <td class="neg">$${worst.toFixed(2)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════
+// WATCHLIST
+// ═══════════════════════════════
+function showAddWatch() { document.getElementById('add-watch-form').style.display = 'block'; }
+function hideAddWatch() { document.getElementById('add-watch-form').style.display = 'none'; }
+
+let watchSearchTimeout = null;
+function searchWatchStock(q) {
+  clearTimeout(watchSearchTimeout);
+  const dd = document.getElementById('watch-dropdown');
+  if(!q || q.length < 2) { dd.style.display='none'; return; }
+  watchSearchTimeout = setTimeout(() => {
+    const results = STOCKS.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.ticker.toLowerCase().includes(q.toLowerCase())).slice(0,6);
+    if(!results.length) { dd.style.display='none'; return; }
+    dd.innerHTML = results.map(s => `
+      <div onclick="selectWatchStock(${JSON.stringify(s).replace(/"/g,'&quot;')})"
+        style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px"
+        onmouseover="this.style.background='rgba(14,165,233,0.06)'" onmouseout="this.style.background='transparent'">
+        <div style="background:var(--surface3);border-radius:4px;padding:3px 7px;font-size:0.62rem;color:var(--accent)">${s.ticker}</div>
+        <div>
+          <div style="font-size:0.78rem">${s.name}</div>
+          <div style="font-size:0.6rem;color:var(--text3)">${s.sector}</div>
+        </div>
+      </div>`).join('');
+    dd.style.display = 'block';
+  }, 200);
+}
+
+function selectWatchStock(s) {
+  document.getElementById('w-name').value = s.name;
+  document.getElementById('w-search').value = s.name + ' (' + s.ticker + ')';
+  document.getElementById('watch-dropdown').style.display = 'none';
+  document.getElementById('w-level').focus();
+}
+
+function addWatch() {
+  const name = document.getElementById('w-name').value.trim();
+  const level = parseFloat(document.getElementById('w-level').value);
+  const reason = document.getElementById('w-reason').value.trim();
+  if(!name) { alert('Fyll i namn!'); return; }
+  const stock = STOCKS.find(s => s.name.toLowerCase() === name.toLowerCase());
+  watchlist.push({ id: Date.now(), name, ticker: stock?.ticker || name, sector: stock?.sector || '', level: level || null, reason, added: new Date().toISOString().split('T')[0] });
+  localStorage.setItem('td2_watchlist', JSON.stringify(watchlist));
+  hideAddWatch();
+  document.getElementById('w-name').value = '';
+  document.getElementById('w-level').value = '';
+  document.getElementById('w-reason').value = '';
+  document.getElementById('w-search').value = '';
+  renderWatchlist();
+}
+
+function removeWatch(id) {
+  watchlist = watchlist.filter(w => w.id !== id);
+  localStorage.setItem('td2_watchlist', JSON.stringify(watchlist));
+  renderWatchlist();
+}
+
+function renderWatchlist() {
+  const el = document.getElementById('watchlist-items');
+  const aiBlock = document.getElementById('watch-ai-block');
+  if(!watchlist.length) { el.innerHTML = '<div class="empty">Inga aktier bevakade ännu.</div>'; aiBlock.style.display='none'; return; }
+  el.innerHTML = watchlist.map(w => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-family:var(--font-display);font-size:1rem;font-weight:600">${w.name}</span>
+            <span style="font-size:0.65rem;padding:2px 8px;background:rgba(14,165,233,0.1);color:var(--accent);border-radius:4px">${w.ticker}</span>
+            ${w.sector ? `<span style="font-size:0.62rem;color:var(--text3)">${w.sector}</span>` : ''}
+          </div>
+          ${w.level ? `<div style="font-size:0.75rem;margin-bottom:4px">Köpnivå: <strong class="neu">$${w.level}</strong></div>` : ''}
+          ${w.reason ? `<div style="font-size:0.72rem;color:var(--text2)">${w.reason}</div>` : ''}
+          <div style="font-size:0.62rem;color:var(--text3);margin-top:4px">Tillagd: ${w.added}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-green" onclick="moveToPortfolio(${w.id})">+ Köpt</button>
+          <button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.8rem" onclick="removeWatch(${w.id})">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+  aiBlock.style.display = 'block';
+}
+
+function moveToPortfolio(id) {
+  const w = watchlist.find(x => x.id === id);
+  if(!w) return;
+  // Pre-fill portfolio form
+  showPage('portfolio', document.querySelector('[onclick*="portfolio"]'));
+  showAddHolding();
+  document.getElementById('h-name').value = w.name;
+  document.getElementById('h-sector').value = w.sector || '';
+  if(w.level) document.getElementById('h-avg').value = w.level;
+  document.getElementById('h-search').value = w.name;
+}
+
+async function analyzeWatchlist() {
+  const el = document.getElementById('watch-ai-text');
+  el.textContent = '⏳ Analyserar watchlist...';
+  const list = watchlist.map(w => `${w.name} (${w.ticker}) — köpnivå: ${w.level ? '$'+w.level : 'ej satt'} — anledning: ${w.reason || 'ingen'}`).join('\n');
+  el.textContent = await callAI(`Min watchlist:\n${list}\n\nAnalysera varje aktie:\n1. Är köpnivån rimlig?\n2. Köp nu / Avvakta / Undvik\n3. Vad bör jag bevaka?\n\nVar konkret och kort.`, 'Du är en erfaren portföljförvaltare. Svara på svenska.');
 }
 
 // ═══════════════════════════════
