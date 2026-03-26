@@ -539,7 +539,7 @@ tr:hover td { background:rgba(14,165,233,0.02); }
     <div class="page" id="page-us100">
 
       <!-- TOP BAR: Signal + Generate -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
         <div>
           <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:700;letter-spacing:-0.5px">US100 Day Trading</div>
           <div style="font-size:0.65rem;color:var(--text3);margin-top:2px">NQ Futures · ICT/SMC Analyse · Top-Down</div>
@@ -548,6 +548,30 @@ tr:hover td { background:rgba(14,165,233,0.02); }
           <div id="us-signal-badge"><span class="signal-badge signal-neutral">— Ej analyserad</span></div>
           <button class="btn" onclick="generateUS100()">⚡ Generera Daglig Analys</button>
           <button class="btn btn-ghost btn-sm" onclick="loadEconomicCalendar();loadUS100News()">🔄</button>
+        </div>
+      </div>
+
+      <!-- PRICE INPUT FORM -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">📍 Ange Aktuella Prisnivåer</div>
+          <div style="font-size:0.65rem;color:var(--text3)">Fyll i från din tradingplattform — AI använder dessa för exakt analys</div>
+        </div>
+        <div class="form-row fr4">
+          <div><label>Nuvarande pris</label><input type="number" id="nq-price" placeholder="t.ex. 21350" step="any" /></div>
+          <div><label>Asia High</label><input type="number" id="nq-asia-high" placeholder="t.ex. 21400" step="any" /></div>
+          <div><label>Asia Low</label><input type="number" id="nq-asia-low" placeholder="t.ex. 21280" step="any" /></div>
+          <div><label>Föregående dag High</label><input type="number" id="nq-pd-high" placeholder="t.ex. 21450" step="any" /></div>
+        </div>
+        <div class="form-row fr4">
+          <div><label>Föregående dag Low</label><input type="number" id="nq-pd-low" placeholder="t.ex. 21200" step="any" /></div>
+          <div><label>London High</label><input type="number" id="nq-lon-high" placeholder="t.ex. 21380" step="any" /></div>
+          <div><label>London Low</label><input type="number" id="nq-lon-low" placeholder="t.ex. 21250" step="any" /></div>
+          <div><label>Vecko High</label><input type="number" id="nq-wk-high" placeholder="t.ex. 21500" step="any" /></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="savePriceLevels()">💾 Spara nivåer</button>
+          <div style="font-size:0.65rem;color:var(--text3)" id="price-saved-msg"></div>
         </div>
       </div>
 
@@ -1144,7 +1168,7 @@ function showPage(id, el) {
   closeSidebar();
   // page init
   if(id === 'dashboard') initDashboard();
-  if(id === 'us100') { loadUS100News(); loadEconomicCalendar(); }
+  if(id === 'us100') { loadUS100News(); loadEconomicCalendar(); setTimeout(loadPriceLevels, 100); }
   if(id === 'checklist') renderChecklist();
   if(id === 'watchlist') renderWatchlist();
   if(id === 'portfolio') renderPortfolio();
@@ -1339,34 +1363,56 @@ async function generateUS100() {
   el.textContent = '⏳ Analyserar US100 top-down...';
   badge.innerHTML = '<span class="signal-badge signal-neutral"><div class="spinner"></div> Analyserar...</span>';
 
-  const prompt = `Datum: ${new Date().toLocaleDateString('sv-SE')}
+  // Get price levels from inputs
+  const levels = JSON.parse(localStorage.getItem('td2_nq_levels') || '{}');
+  const price     = document.getElementById('nq-price')?.value || levels.price || '';
+  const asiaHigh  = document.getElementById('nq-asia-high')?.value || levels.asiaHigh || '';
+  const asiaLow   = document.getElementById('nq-asia-low')?.value || levels.asiaLow || '';
+  const pdHigh    = document.getElementById('nq-pd-high')?.value || levels.pdHigh || '';
+  const pdLow     = document.getElementById('nq-pd-low')?.value || levels.pdLow || '';
+  const lonHigh   = document.getElementById('nq-lon-high')?.value || levels.lonHigh || '';
+  const lonLow    = document.getElementById('nq-lon-low')?.value || levels.lonLow || '';
+  const wkHigh    = document.getElementById('nq-wk-high')?.value || levels.wkHigh || '';
 
-Gör en professionell top-down analys av US100/NQ futures för idag:
+  const priceContext = price ? `
+AKTUELLA PRISNIVÅER (använd dessa för din analys):
+- Nuvarande pris: ${price}
+- Asia High: ${asiaHigh || 'ej angiven'}
+- Asia Low: ${asiaLow || 'ej angiven'}
+- Föregående dag High: ${pdHigh || 'ej angiven'}
+- Föregående dag Low: ${pdLow || 'ej angiven'}
+- London High: ${lonHigh || 'ej angiven'}
+- London Low: ${lonLow || 'ej angiven'}
+- Vecko High: ${wkHigh || 'ej angiven'}
+` : '\nOBS: Inga prisnivåer angivna — ge generell strukturanalys men påpeka att användaren bör fylla i aktuella nivåer för exakt analys.\n';
+
+  const prompt = `Datum: ${new Date().toLocaleDateString('sv-SE')}
+${priceContext}
+Gör en professionell top-down analys av US100/NQ futures för idag baserat på dessa nivåer:
 
 ANALYSERA:
-- 4H: Trend, struktur, bias
-- 1H: Bekräftelse, likviditetszoner  
+- 4H: Trend, struktur, bias baserat på angivna nivåer
+- 1H: Bekräftelse, likviditetszoner
 - 15M: Entry-struktur, FVG, CISD
 - 5M: Precision entry
 
 FOKUSERA PÅ:
-- Liquidity sweeps (Asia high/low, London high/low)
-- Fair Value Gaps (FVG / iFVG)
-- Change in State of Delivery (CISD)
-- Smart Money Technique (SMT)
+- Har Asia High/Low sweepats? Vad signalerar det?
+- Är priset över/under föregående dags High/Low?
+- Liquidity sweeps & FVG zoner vid dessa nivåer
+- CISD & SMT signaler
 - Volatilitet: clean trend eller chop?
 
 SLUTSATS:
 - BIAS: Bullish / Bearish / Neutral
 - SIGNAL: LONG / SHORT / NO TRADE
 - A++ SETUP: Ja / Nej (och varför)
-- 3 exakta nyckelnivåer att bevaka
+- 3 exakta nyckelnivåer att bevaka (baserat på angivna priser)
 - Session-bias: Asia / London / New York
 
-FORMAT:
-Börja alltid med "BIAS: [Bullish/Bearish/Neutral]" och "SIGNAL: [LONG/SHORT/NO TRADE]" på egna rader.`;
+FORMAT: Börja alltid med "BIAS: [Bullish/Bearish/Neutral]" och "SIGNAL: [LONG/SHORT/NO TRADE]" på egna rader.`;
 
-  const sys = 'Du är en ICT/SMC-specialiserad daytrader med fokus på US100/NQ. Du analyserar price action, likviditet, FVG och marknadsstruktur. Var specifik och professionell. Svara på svenska.';
+  const sys = 'Du är en ICT/SMC-specialiserad daytrader med fokus på US100/NQ. Analysera EXAKT baserat på de prisnivåer användaren angett. Nämn specifika priser i din analys. Svara på svenska.';
   const result = await callAI(prompt, sys);
   el.textContent = result;
 
@@ -1441,6 +1487,36 @@ Börja alltid med "BIAS: [Bullish/Bearish/Neutral]" och "SIGNAL: [LONG/SHORT/NO 
   localStorage.setItem('td2_us100_signal', JSON.stringify({ sig, date: new Date().toDateString() }));
   // Auto-load economic calendar when analysis is generated
   loadEconomicCalendar();
+}
+
+function savePriceLevels() {
+  const levels = {
+    price:    document.getElementById('nq-price')?.value,
+    asiaHigh: document.getElementById('nq-asia-high')?.value,
+    asiaLow:  document.getElementById('nq-asia-low')?.value,
+    pdHigh:   document.getElementById('nq-pd-high')?.value,
+    pdLow:    document.getElementById('nq-pd-low')?.value,
+    lonHigh:  document.getElementById('nq-lon-high')?.value,
+    lonLow:   document.getElementById('nq-lon-low')?.value,
+    wkHigh:   document.getElementById('nq-wk-high')?.value,
+  };
+  localStorage.setItem('td2_nq_levels', JSON.stringify(levels));
+  const msg = document.getElementById('price-saved-msg');
+  if(msg) { msg.textContent = '✅ Sparade ' + new Date().toLocaleTimeString('sv-SE'); }
+}
+
+function loadPriceLevels() {
+  const levels = JSON.parse(localStorage.getItem('td2_nq_levels') || '{}');
+  const fields = {
+    'nq-price': levels.price, 'nq-asia-high': levels.asiaHigh,
+    'nq-asia-low': levels.asiaLow, 'nq-pd-high': levels.pdHigh,
+    'nq-pd-low': levels.pdLow, 'nq-lon-high': levels.lonHigh,
+    'nq-lon-low': levels.lonLow, 'nq-wk-high': levels.wkHigh,
+  };
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if(el && val) el.value = val;
+  });
 }
 
 // ═══════════════════════════════
