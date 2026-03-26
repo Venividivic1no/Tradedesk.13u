@@ -583,6 +583,28 @@ tr:hover td { background:rgba(14,165,233,0.02); }
         </div>
       </div>
 
+      <!-- ECONOMIC CALENDAR -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">⚡ Economic Calendar – Viktiga Events Idag</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadEconomicCalendar()">🔄 Uppdatera</button>
+        </div>
+        <div id="econ-warning" style="display:none;margin-bottom:12px">
+          <div class="stop-block" style="padding:14px;animation:none;border-color:var(--yellow)">
+            <div style="font-size:1.5rem;margin-bottom:4px">⚠️</div>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--yellow);font-size:1rem">HIGH IMPACT EVENT IDAG</div>
+            <div class="stop-msg" id="econ-warning-text">Var extremt försiktig med trading idag.</div>
+          </div>
+        </div>
+        <div id="econ-calendar">
+          <div class="empty">Laddar economic calendar...</div>
+        </div>
+        <div class="ai-block" style="margin-top:14px" id="econ-ai-block" style="display:none">
+          <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI – Vad betyder dessa events för din US100 trading?</div></div>
+          <div class="ai-text" id="econ-ai-text">Laddar analys...</div>
+        </div>
+      </div>
+
       <!-- US100 NEWS -->
       <div class="card">
         <div class="card-header"><div class="card-title">US100 Relaterade Nyheter</div><button class="btn btn-ghost btn-sm" onclick="loadUS100News()">🔄</button></div>
@@ -622,8 +644,35 @@ tr:hover td { background:rgba(14,165,233,0.02); }
       <!-- ADD FORM -->
       <div class="card" id="add-holding-form" style="display:none;margin-bottom:16px">
         <div class="card-header"><div class="card-title">Lägg till innehav</div><button class="btn btn-ghost btn-sm" onclick="hideAddHolding()">✕</button></div>
+
+        <!-- STOCK SEARCH -->
+        <div class="form-group" style="position:relative">
+          <label>Sök aktie / fond / krypto</label>
+          <div style="display:flex;gap:8px">
+            <div style="position:relative;flex:1">
+              <input id="h-search" placeholder="Sök t.ex. Apple, Tesla, Bitcoin, Volvo..." oninput="searchStock(this.value)" autocomplete="off" />
+              <div id="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;max-height:220px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="searchStock(document.getElementById('h-search').value)">Sök</button>
+          </div>
+        </div>
+
+        <!-- SELECTED STOCK INFO -->
+        <div id="selected-stock-info" style="display:none;background:var(--surface2);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-family:var(--font-display);font-size:1rem;font-weight:600" id="sel-name">—</div>
+              <div style="font-size:0.65rem;color:var(--text3)" id="sel-ticker">—</div>
+            </div>
+            <div style="margin-left:auto;text-align:right">
+              <div style="font-size:0.7rem;color:var(--text3)" id="sel-sector">—</div>
+              <div style="font-size:0.7rem;color:var(--text3)" id="sel-type-label">—</div>
+            </div>
+          </div>
+        </div>
+
         <div class="form-row fr4">
-          <div><label>Namn</label><input id="h-name" placeholder="Apple / BTC" /></div>
+          <div><label>Namn / Ticker</label><input id="h-name" placeholder="Apple" /></div>
           <div><label>Typ</label><select id="h-type"><option value="aktie">Aktie</option><option value="fond">Fond</option><option value="etf">ETF</option><option value="krypto">Krypto</option></select></div>
           <div><label>Antal</label><input id="h-qty" type="number" placeholder="10" step="any" /></div>
           <div><label>Snittpris</label><input id="h-avg" type="number" placeholder="150" step="any" /></div>
@@ -929,7 +978,7 @@ function showPage(id, el) {
   closeSidebar();
   // page init
   if(id === 'dashboard') initDashboard();
-  if(id === 'us100') loadUS100News();
+  if(id === 'us100') { loadUS100News(); loadEconomicCalendar(); }
   if(id === 'portfolio') renderPortfolio();
   if(id === 'journal') renderJournal();
   if(id === 'stats') renderStats();
@@ -1090,7 +1139,7 @@ async function generateDailyBrief() {
   const todayTrades = getTodayTrades().length;
   const todayLoss = getTodayLoss();
 
-  const prompt = `Datum: ${new Date().toLocaleDateString('sv-SE')}
+  const prompt = `Datum: ${new Date().toLocaleDateString('sv-SE')}, ${new Date().toLocaleDateString('sv-SE', {weekday:'long'})}
 Jag är ${settings.age||21} år gammal daytrader/investerare.
 Min portfölj: ${portText}
 Trading: ${count} totala trades, ${winRate.toFixed(0)}% win rate, $${totalPnl.toFixed(2)} total PnL
@@ -1099,12 +1148,13 @@ Risk-regler: max $${risk.maxloss||0}/dag, max ${risk.maxtrades||0} trades
 
 Ge mig en DAGLIG BRIEF som innehåller:
 1. 📊 Marknadsbias – bullish/bearish/neutral och varför
-2. 🎯 Viktigaste nivåer att bevaka på US100 idag (ange ungefärliga priser)
-3. ⚠️ Risker & events att vara medveten om
-4. 🔔 Rekommendation: Trade / No Trade / Var försiktig
-5. 💡 Personlig notering baserat på min trading-historik
+2. ⚡ Viktiga ekonomiska events IDAG att vara medveten om (FOMC, NFP, CPI, räntebesked, inflation, jobbdata etc) — om det är en dag med high-impact events, varna mig tydligt
+3. 🎯 Viktigaste nivåer att bevaka på US100 idag
+4. ⚠️ Risker & events att vara medveten om
+5. 🔔 Rekommendation: Trade / No Trade / Var försiktig
+6. 💡 Personlig notering baserat på min trading-historik
 
-Var konkret och kort. Max 200 ord totalt.`;
+Var konkret och direkt. Max 250 ord totalt.`;
 
   const result = await callAI(prompt, 'Du är en erfaren trading coach. Ge konkret, actionable daglig brief. Svara på svenska. Var direkt.');
   el.textContent = result;
@@ -1219,7 +1269,266 @@ Börja alltid med "BIAS: [Bullish/Bearish/Neutral]" och "SIGNAL: [LONG/SHORT/NO 
   });
 
   localStorage.setItem('td2_us100_signal', JSON.stringify({ sig, date: new Date().toDateString() }));
+  // Auto-load economic calendar when analysis is generated
+  loadEconomicCalendar();
 }
+
+// ═══════════════════════════════
+// ECONOMIC CALENDAR
+// ═══════════════════════════════
+const ECONOMIC_EVENTS = [
+  { name: 'FOMC Meeting / Fed Räntebesked', impact: 'critical', keywords: ['fomc','federal reserve','fed rate','interest rate decision'], emoji: '🏦', desc: 'Extrem volatilitet. Undvik trading 30 min före/efter.' },
+  { name: 'Fed Chair Powell tal', impact: 'critical', keywords: ['powell','fed speech','federal reserve speech'], emoji: '🎙️', desc: 'Hög volatilitet. Marknaden tolkar varje ord.' },
+  { name: 'Non-Farm Payrolls (NFP)', impact: 'critical', keywords: ['nfp','non-farm','payroll','jobs report'], emoji: '💼', desc: 'Extrem volatilitet kl 14:30 svensk tid. NO TRADE.' },
+  { name: 'CPI – Inflationsdata', impact: 'critical', keywords: ['cpi','consumer price','inflation data'], emoji: '📊', desc: 'Stor rörelse möjlig. Vänta på initial spike.' },
+  { name: 'PPI – Producentprisindex', impact: 'high', keywords: ['ppi','producer price'], emoji: '🏭', desc: 'Påverkar inflationsförväntningar och US100.' },
+  { name: 'GDP – BNP', impact: 'high', keywords: ['gdp','gross domestic'], emoji: '📈', desc: 'Viktig för riskaptit och marknadssentiment.' },
+  { name: 'Retail Sales', impact: 'high', keywords: ['retail sales'], emoji: '🛒', desc: 'Påverkar konsumentsentiment och tech-aktier.' },
+  { name: 'Initial Jobless Claims', impact: 'medium', keywords: ['jobless claims','unemployment claims'], emoji: '📋', desc: 'Påverkar Fed-förväntningar.' },
+  { name: 'ISM Manufacturing/Services', impact: 'medium', keywords: ['ism','manufacturing pmi','services pmi'], emoji: '🏗️', desc: 'Ekonomisk aktivitetsindikator.' },
+  { name: 'JOLTS Job Openings', impact: 'medium', keywords: ['jolts','job openings'], emoji: '🔍', desc: 'Arbetsmarknadsindikator.' },
+  { name: 'Michigan Consumer Sentiment', impact: 'medium', keywords: ['michigan','consumer sentiment','consumer confidence'], emoji: '🧭', desc: 'Konsumentförtroende-indikator.' },
+  { name: 'ADP Employment', impact: 'medium', keywords: ['adp','adp employment'], emoji: '👥', desc: 'Förhandsindikator för NFP.' },
+  { name: 'Core PCE', impact: 'high', keywords: ['pce','core pce','personal consumption'], emoji: '💰', desc: 'Feds favoritinflationsmått.' },
+  { name: 'Durable Goods Orders', impact: 'medium', keywords: ['durable goods'], emoji: '⚙️', desc: 'Industriell aktivitetsindikator.' },
+];
+
+// Fetch news to detect economic events
+async function loadEconomicCalendar() {
+  const el = document.getElementById('econ-calendar');
+  el.innerHTML = '<div class="empty"><div class="spinner"></div> Söker efter viktiga events idag...</div>';
+
+  const today = new Date();
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+  const dateStr = today.toLocaleDateString('sv-SE');
+
+  // Search for economic events in news
+  let detectedEvents = [];
+  try {
+    const articles = await fetchNews('FOMC fed rate CPI NFP payroll inflation GDP jobless claims economic data today');
+    const allText = articles.map(a => (a.title + ' ' + (a.description||'')).toLowerCase()).join(' ');
+
+    ECONOMIC_EVENTS.forEach(ev => {
+      const found = ev.keywords.some(k => allText.includes(k));
+      if(found) detectedEvents.push(ev);
+    });
+  } catch(e) {}
+
+  // Always show calendar with known schedule context
+  const scheduledToday = getScheduledEvents(today);
+  const allEvents = [...scheduledToday, ...detectedEvents.filter(e => !scheduledToday.find(s => s.name === e.name))];
+
+  if(!allEvents.length) {
+    el.innerHTML = `
+      <div style="padding:12px 0">
+        <div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">✅ Inga kända high-impact events hittade idag (${dateStr})</div>
+        <div style="font-size:0.7rem;color:var(--text3)">Normal trading-dag. Håll koll på Fed-tal och oväntade nyheter.</div>
+      </div>`;
+    return;
+  }
+
+  // Check for critical events
+  const criticals = allEvents.filter(e => e.impact === 'critical');
+  if(criticals.length) {
+    document.getElementById('econ-warning').style.display = 'block';
+    document.getElementById('econ-warning-text').textContent = criticals.map(e => e.name).join(', ') + ' — Extrem försiktighet krävs!';
+  } else {
+    document.getElementById('econ-warning').style.display = 'none';
+  }
+
+  el.innerHTML = allEvents.map(ev => `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:1.4rem">${ev.emoji}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+          <span style="font-size:0.8rem;font-weight:500">${ev.name}</span>
+          <span class="signal-badge ${ev.impact === 'critical' ? 'signal-short' : ev.impact === 'high' ? 'signal-wait' : 'signal-neutral'}" style="font-size:0.6rem;padding:2px 8px">
+            ${ev.impact === 'critical' ? '🔴 KRITISK' : ev.impact === 'high' ? '🟡 HÖG' : '🟢 MEDIUM'}
+          </span>
+          ${ev.time ? `<span style="font-size:0.65rem;color:var(--text3)">${ev.time}</span>` : ''}
+        </div>
+        <div style="font-size:0.7rem;color:var(--text3)">${ev.desc}</div>
+      </div>
+    </div>`).join('');
+
+  // AI analysis of events
+  const aiBlock = document.getElementById('econ-ai-block');
+  const aiEl = document.getElementById('econ-ai-text');
+  aiBlock.style.display = 'block';
+  aiEl.textContent = '⏳ AI analyserar events...';
+
+  const eventNames = allEvents.map(e => `${e.name} (${e.impact})`).join(', ');
+  const result = await callAI(
+    `Datum: ${dateStr}. Dessa ekonomiska events är relevanta idag: ${eventNames}.\n\nFörklara konkret:\n1. Vad innebär detta för US100/NQ idag?\n2. Vilka tider ska jag vara extra försiktig?\n3. Ska jag undvika att tradera helt, eller kan jag handla med extra försiktighet?\n4. Vad bör jag bevaka specifikt?\n\nVar kort och direkt. Max 150 ord.`,
+    'Du är en erfaren NQ/US100 daytrader. Svara på svenska. Var konkret och actionable.'
+  );
+  aiEl.textContent = result;
+}
+
+function getScheduledEvents(date) {
+  // Known recurring schedule patterns
+  const day = date.getDay(); // 0=sun, 5=fri
+  const events = [];
+
+  // Every Thursday: Initial Jobless Claims (14:30 svensk tid)
+  if(day === 4) events.push({ ...ECONOMIC_EVENTS.find(e => e.name.includes('Jobless')), time: '14:30 SE' });
+
+  // First Friday of month: NFP
+  const firstFriday = getFirstFridayOfMonth(date);
+  if(date.getDate() === firstFriday && day === 5) {
+    events.push({ ...ECONOMIC_EVENTS.find(e => e.name.includes('Non-Farm')), time: '14:30 SE' });
+  }
+
+  return events.filter(Boolean);
+}
+
+function getFirstFridayOfMonth(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), 1);
+  while(d.getDay() !== 5) d.setDate(d.getDate() + 1);
+  return d.getDate();
+}
+
+// ═══════════════════════════════
+// STOCK SEARCH DATABASE
+// ═══════════════════════════════
+const STOCKS = [
+  // US Tech
+  { name:'Apple', ticker:'AAPL', sector:'Tech', type:'aktie', country:'US' },
+  { name:'Microsoft', ticker:'MSFT', sector:'Tech', type:'aktie', country:'US' },
+  { name:'Nvidia', ticker:'NVDA', sector:'Tech', type:'aktie', country:'US' },
+  { name:'Alphabet (Google)', ticker:'GOOGL', sector:'Tech', type:'aktie', country:'US' },
+  { name:'Amazon', ticker:'AMZN', sector:'Tech/E-commerce', type:'aktie', country:'US' },
+  { name:'Meta Platforms', ticker:'META', sector:'Tech/Social', type:'aktie', country:'US' },
+  { name:'Tesla', ticker:'TSLA', sector:'EV/Tech', type:'aktie', country:'US' },
+  { name:'Netflix', ticker:'NFLX', sector:'Streaming', type:'aktie', country:'US' },
+  { name:'AMD', ticker:'AMD', sector:'Halvledare', type:'aktie', country:'US' },
+  { name:'Intel', ticker:'INTC', sector:'Halvledare', type:'aktie', country:'US' },
+  { name:'Broadcom', ticker:'AVGO', sector:'Halvledare', type:'aktie', country:'US' },
+  { name:'Salesforce', ticker:'CRM', sector:'SaaS', type:'aktie', country:'US' },
+  { name:'Oracle', ticker:'ORCL', sector:'Tech', type:'aktie', country:'US' },
+  { name:'Adobe', ticker:'ADBE', sector:'SaaS', type:'aktie', country:'US' },
+  { name:'Palantir', ticker:'PLTR', sector:'AI/Data', type:'aktie', country:'US' },
+  { name:'Snowflake', ticker:'SNOW', sector:'Cloud', type:'aktie', country:'US' },
+  { name:'CrowdStrike', ticker:'CRWD', sector:'Cybersecurity', type:'aktie', country:'US' },
+  { name:'Cloudflare', ticker:'NET', sector:'Cybersecurity', type:'aktie', country:'US' },
+  // US Finance
+  { name:'JPMorgan Chase', ticker:'JPM', sector:'Finans', type:'aktie', country:'US' },
+  { name:'Goldman Sachs', ticker:'GS', sector:'Finans', type:'aktie', country:'US' },
+  { name:'Visa', ticker:'V', sector:'Fintech', type:'aktie', country:'US' },
+  { name:'Mastercard', ticker:'MA', sector:'Fintech', type:'aktie', country:'US' },
+  // US Other
+  { name:'Johnson & Johnson', ticker:'JNJ', sector:'Hälsa', type:'aktie', country:'US' },
+  { name:'ExxonMobil', ticker:'XOM', sector:'Energi', type:'aktie', country:'US' },
+  { name:'Walmart', ticker:'WMT', sector:'Retail', type:'aktie', country:'US' },
+  { name:'Berkshire Hathaway', ticker:'BRK.B', sector:'Konglomerat', type:'aktie', country:'US' },
+  { name:'Coca-Cola', ticker:'KO', sector:'Konsument', type:'aktie', country:'US' },
+  { name:'Nike', ticker:'NKE', sector:'Konsument', type:'aktie', country:'US' },
+  { name:'Disney', ticker:'DIS', sector:'Media/Entertainment', type:'aktie', country:'US' },
+  { name:'Spotify', ticker:'SPOT', sector:'Streaming/Music', type:'aktie', country:'US' },
+  // Swedish stocks
+  { name:'Volvo', ticker:'VOLV B', sector:'Fordon', type:'aktie', country:'SE' },
+  { name:'Ericsson', ticker:'ERIC B', sector:'Telekom', type:'aktie', country:'SE' },
+  { name:'H&M', ticker:'HM B', sector:'Retail/Mode', type:'aktie', country:'SE' },
+  { name:'Investor', ticker:'INVE B', sector:'Investmentbolag', type:'aktie', country:'SE' },
+  { name:'Atlas Copco', ticker:'ATCO A', sector:'Industri', type:'aktie', country:'SE' },
+  { name:'ABB', ticker:'ABB', sector:'Industri/Tech', type:'aktie', country:'SE' },
+  { name:'Sandvik', ticker:'SAND', sector:'Industri', type:'aktie', country:'SE' },
+  { name:'Essity', ticker:'ESSITY B', sector:'Konsument', type:'aktie', country:'SE' },
+  { name:'Handelsbanken', ticker:'SHB A', sector:'Finans', type:'aktie', country:'SE' },
+  { name:'Swedbank', ticker:'SWED A', sector:'Finans', type:'aktie', country:'SE' },
+  { name:'SEB', ticker:'SEB A', sector:'Finans', type:'aktie', country:'SE' },
+  { name:'Nordea', ticker:'NDA SE', sector:'Finans', type:'aktie', country:'SE' },
+  { name:'Hexagon', ticker:'HEXA B', sector:'Tech/Industri', type:'aktie', country:'SE' },
+  { name:'Evolution Gaming', ticker:'EVO', sector:'Gaming/Tech', type:'aktie', country:'SE' },
+  { name:'Nibe', ticker:'NIBE B', sector:'Energi', type:'aktie', country:'SE' },
+  // ETFs
+  { name:'S&P 500 ETF (SPY)', ticker:'SPY', sector:'Index USA', type:'etf', country:'US' },
+  { name:'Nasdaq 100 ETF (QQQ)', ticker:'QQQ', sector:'Index Tech', type:'etf', country:'US' },
+  { name:'iShares Core MSCI World', ticker:'IWDA', sector:'Global Index', type:'etf', country:'Global' },
+  { name:'Vanguard S&P 500 ETF', ticker:'VOO', sector:'Index USA', type:'etf', country:'US' },
+  { name:'ARK Innovation ETF', ticker:'ARKK', sector:'Innovation/Tech', type:'etf', country:'US' },
+  { name:'Avanza Zero', ticker:'AVGZERO', sector:'Svensk Index', type:'fond', country:'SE' },
+  { name:'Länsförsäkringar Global Index', ticker:'LFGI', sector:'Global Index', type:'fond', country:'SE' },
+  { name:'SPP Global Plus', ticker:'SPPGLOBAL', sector:'Global Index', type:'fond', country:'SE' },
+  // Crypto
+  { name:'Bitcoin', ticker:'BTC', sector:'Krypto', type:'krypto', country:'Global' },
+  { name:'Ethereum', ticker:'ETH', sector:'Krypto', type:'krypto', country:'Global' },
+  { name:'Solana', ticker:'SOL', sector:'Krypto', type:'krypto', country:'Global' },
+  { name:'XRP', ticker:'XRP', sector:'Krypto', type:'krypto', country:'Global' },
+  { name:'Cardano', ticker:'ADA', sector:'Krypto', type:'krypto', country:'Global' },
+  { name:'Dogecoin', ticker:'DOGE', sector:'Krypto/Meme', type:'krypto', country:'Global' },
+  { name:'Avalanche', ticker:'AVAX', sector:'Krypto', type:'krypto', country:'Global' },
+  { name:'Chainlink', ticker:'LINK', sector:'Krypto', type:'krypto', country:'Global' },
+];
+
+let searchTimeout = null;
+
+function searchStock(query) {
+  clearTimeout(searchTimeout);
+  const dropdown = document.getElementById('search-dropdown');
+  if(!query || query.length < 2) { dropdown.style.display = 'none'; return; }
+
+  searchTimeout = setTimeout(() => {
+    const q = query.toLowerCase();
+    const results = STOCKS.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.ticker.toLowerCase().includes(q) ||
+      s.sector.toLowerCase().includes(q)
+    ).slice(0, 8);
+
+    if(!results.length) {
+      dropdown.innerHTML = `<div style="padding:12px;font-size:0.75rem;color:var(--text3)">Hittade inget för "${query}" — fyll i manuellt nedan</div>`;
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    dropdown.innerHTML = results.map(s => `
+      <div onclick="selectStock(${JSON.stringify(s).replace(/"/g,'&quot;')})"
+        style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s;display:flex;align-items:center;gap:12px"
+        onmouseover="this.style.background='rgba(14,165,233,0.06)'" onmouseout="this.style.background='transparent'">
+        <div style="background:var(--surface3);border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:600;color:var(--accent);min-width:50px;text-align:center">${s.ticker}</div>
+        <div>
+          <div style="font-size:0.8rem;font-weight:500">${s.name}</div>
+          <div style="font-size:0.62rem;color:var(--text3)">${s.sector} · ${s.country} · ${s.type}</div>
+        </div>
+      </div>`).join('');
+    dropdown.style.display = 'block';
+  }, 200);
+}
+
+function selectStock(stock) {
+  // Fill in form fields
+  document.getElementById('h-name').value = stock.name;
+  document.getElementById('h-sector').value = stock.sector;
+  document.getElementById('h-search').value = stock.name + ' (' + stock.ticker + ')';
+  document.getElementById('search-dropdown').style.display = 'none';
+
+  // Set type
+  const typeSelect = document.getElementById('h-type');
+  typeSelect.value = stock.type;
+
+  // Set portfolio
+  const portSelect = document.getElementById('h-port');
+  portSelect.value = stock.type === 'krypto' ? 'krypto' : 'aktier';
+
+  // Show selected info
+  document.getElementById('selected-stock-info').style.display = 'block';
+  document.getElementById('sel-name').textContent = stock.name;
+  document.getElementById('sel-ticker').textContent = stock.ticker + ' · ' + stock.country;
+  document.getElementById('sel-sector').textContent = stock.sector;
+  document.getElementById('sel-type-label').textContent = stock.type.charAt(0).toUpperCase() + stock.type.slice(1);
+
+  // Focus on quantity
+  document.getElementById('h-qty').focus();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('#h-search') && !e.target.closest('#search-dropdown')) {
+    const dd = document.getElementById('search-dropdown');
+    if(dd) dd.style.display = 'none';
+  }
+});
 
 // ═══════════════════════════════
 // PORTFOLIO
@@ -1236,8 +1545,24 @@ function addHolding() {
   const sector = document.getElementById('h-sector').value;
   const port = document.getElementById('h-port').value;
   if(!name || isNaN(qty) || isNaN(avg) || isNaN(cur)) { alert('Fyll i alla fält!'); return; }
-  holdings.push({ id: Date.now(), name, qty, avgPrice: avg, currentPrice: cur, type, sector, portfolio: port });
-  persist(); hideAddHolding(); renderPortfolio();
+
+  // Find ticker from stock database
+  const stockInfo = STOCKS.find(s => s.name.toLowerCase() === name.toLowerCase() || s.ticker.toLowerCase() === name.toLowerCase());
+  const ticker = stockInfo ? stockInfo.ticker : name;
+
+  holdings.push({ id: Date.now(), name, ticker, qty, avgPrice: avg, currentPrice: cur, type, sector, portfolio: port });
+  persist();
+
+  // Reset form
+  document.getElementById('h-search').value = '';
+  document.getElementById('h-name').value = '';
+  document.getElementById('h-qty').value = '';
+  document.getElementById('h-avg').value = '';
+  document.getElementById('h-cur').value = '';
+  document.getElementById('h-sector').value = '';
+  document.getElementById('selected-stock-info').style.display = 'none';
+
+  hideAddHolding(); renderPortfolio();
 }
 
 function removeHolding(id) { holdings = holdings.filter(h => h.id !== id); persist(); renderPortfolio(); }
@@ -1270,7 +1595,7 @@ function renderPortfolio() {
     const hPnl = (h.currentPrice - h.avgPrice) * h.qty;
     const hPct = ((h.currentPrice - h.avgPrice)/h.avgPrice*100).toFixed(1);
     return `<tr>
-      <td><strong>${h.name}</strong>${h.sector ? `<br><span style="font-size:0.6rem;color:var(--text3)">${h.sector}</span>` : ''}</td>
+      <td><strong>${h.name}</strong>${h.ticker && h.ticker !== h.name ? `<br><span style="font-size:0.6rem;color:var(--accent)">${h.ticker}</span>` : ''}${h.sector ? `<br><span style="font-size:0.6rem;color:var(--text3)">${h.sector}</span>` : ''}</td>
       <td><span class="tag tag-blue">${h.type}</span></td>
       <td>${h.qty}</td>
       <td>${fmtCurr(h.avgPrice)}</td>
@@ -1290,7 +1615,7 @@ async function analyzePortfolio() {
 
   const portText = holdings.map(h => {
     const pct = ((h.currentPrice - h.avgPrice)/h.avgPrice*100).toFixed(1);
-    return `${h.name} (${h.type}, ${h.sector||'okänd sektor'}): ${h.qty}st, snittpris ${h.avgPrice}, nuv ${h.currentPrice}, PnL: ${pct}%`;
+    return `${h.name}${h.ticker && h.ticker !== h.name ? ` (${h.ticker})` : ''} [${h.type}, ${h.sector||'okänd sektor'}]: ${h.qty}st, snittpris ${h.avgPrice}, nuv ${h.currentPrice}, PnL: ${pct}%`;
   }).join('\n');
 
   const result = await callAI(`Jag är ${settings.age||21} år. Min portfölj:\n${portText}\n\nGe konkreta åsikter för varje position:\n- Köp / Fyll på / Behåll / Minska / Sälj / Avvakta\n- Varför\n\nAnalysera sedan:\n1. Sektorbalans & koncentrationsrisk\n2. Överexponering mot något?\n3. Långsiktig potential\n4. 2-3 konkreta förbättringsförslag\n\nAvsluta med 1-2 actions jag borde ta (format: "ACTION: [ticker] – [åtgärd] – [pris/nivå]")`, 'Du är en erfaren portföljförvaltare. Var direkt och specifik. Svara på svenska.');
