@@ -383,6 +383,28 @@ tr:hover td { background:rgba(14,165,233,0.02); }
 </head>
 <body>
 
+<!-- API KEY SETUP SCREEN -->
+<div id="setup-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="max-width:480px;width:100%">
+    <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--accent);margin-bottom:4px">TradeDesk Pro</div>
+    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:32px">Ange din Anthropic API-nyckel för att aktivera AI</div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px">
+      <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);margin-bottom:8px">Anthropic API-nyckel</div>
+      <input type="password" id="setup-key" placeholder="sk-ant-api03-..." style="margin-bottom:12px;font-size:0.85rem" />
+      <button class="btn" style="width:100%" onclick="saveAPIKey()">Aktivera TradeDesk ✓</button>
+      <div style="font-size:0.65rem;color:var(--text3);margin-top:12px;text-align:center">
+        Nyckeln sparas lokalt i din webbläsare — aldrig på internet.<br>
+        Skaffa nyckel på <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>
+      </div>
+    </div>
+
+    <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:12px;margin-top:16px;font-size:0.7rem;color:var(--yellow)">
+      ⚠️ Lägg ALDRIG in nyckeln direkt i kod eller på GitHub — den blockeras automatiskt.
+    </div>
+  </div>
+</div>
+
 <!-- SIDEBAR OVERLAY -->
 <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
 
@@ -1044,9 +1066,16 @@ tr:hover td { background:rgba(14,165,233,0.02); }
 
       <div class="card" style="margin-bottom:14px">
         <div class="card-header"><div class="card-title">API-nycklar</div></div>
-        <div class="form-group"><label>Anthropic API-nyckel</label><input type="password" id="s-anthropic" placeholder="sk-ant-..." /></div>
+        <div class="form-group">
+          <label>Anthropic API-nyckel</label>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="s-anthropic" placeholder="sk-ant-..." />
+            <button class="btn" onclick="updateAPIKey()">Spara</button>
+          </div>
+          <div style="font-size:0.65rem;color:var(--green);margin-top:6px" id="key-status"></div>
+        </div>
         <div class="form-group"><label>NewsAPI-nyckel</label><input type="password" id="s-news" placeholder="din nyckel" /></div>
-        <button class="btn" onclick="saveSettings()">Spara</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveSettings()">Spara NewsAPI</button>
       </div>
 
       <div class="card" style="margin-bottom:14px">
@@ -1072,7 +1101,7 @@ tr:hover td { background:rgba(14,165,233,0.02); }
 // ═══════════════════════════════
 // CONFIG – API KEYS INBYGGDA
 // ═══════════════════════════════
-const ANTHROPIC_KEY = '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';
+const ANTHROPIC_KEY = localStorage.getItem("td2_anthropic_key") || "";
 const NEWS_KEY = '0670e1fb7ad844cbb9d1d23dd34bea8c';
 
 // ═══════════════════════════════
@@ -1143,12 +1172,14 @@ setInterval(updateClock, 1000); updateClock();
 // AI CALL
 // ═══════════════════════════════
 async function callAI(prompt, system = '') {
+  const key = localStorage.getItem('td2_anthropic_key');
+  if(!key) { checkAPIKey(); return '⚠️ Ingen API-nyckel — ange den i inloggningsskärmen.'; }
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
+        'x-api-key': key,
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
@@ -2541,10 +2572,39 @@ async function analyzeWatchlist() {
   el.textContent = await callAI(`Min watchlist:\n${list}\n\nAnalysera varje aktie:\n1. Är köpnivån rimlig?\n2. Köp nu / Avvakta / Undvik\n3. Vad bör jag bevaka?\n\nVar konkret och kort.`, 'Du är en erfaren portföljförvaltare. Svara på svenska.');
 }
 
+function updateAPIKey() {
+  const key = document.getElementById('s-anthropic').value.trim();
+  if(!key || !key.startsWith('sk-ant-')) { alert('Ogiltig nyckel!'); return; }
+  localStorage.setItem('td2_anthropic_key', key);
+  document.getElementById('key-status').textContent = '✅ Nyckel sparad!';
+  document.getElementById('s-anthropic').value = '••••••••••••';
+}
+
+function saveAPIKey() {
+  const key = document.getElementById('setup-key').value.trim();
+  if(!key || !key.startsWith('sk-ant-')) {
+    alert('Ogiltig nyckel — den ska börja med sk-ant-...');
+    return;
+  }
+  localStorage.setItem('td2_anthropic_key', key);
+  document.getElementById('setup-screen').style.display = 'none';
+  initDashboard();
+}
+
+function checkAPIKey() {
+  const key = localStorage.getItem('td2_anthropic_key');
+  if(!key) {
+    document.getElementById('setup-screen').style.display = 'flex';
+  } else {
+    document.getElementById('setup-screen').style.display = 'none';
+  }
+}
+
 // ═══════════════════════════════
 // INIT
 // ═══════════════════════════════
 document.getElementById('t-date').value = new Date().toISOString().split('T')[0];
+checkAPIKey();
 initDashboard();
 renderActions();
 </script>
