@@ -511,105 +511,140 @@ tr:hover td { background:rgba(14,165,233,0.02); }
 
     </div><!-- /dashboard -->
 
-    <!-- ═══════════ US100 ═══════════ -->
+    <!-- ═══════════ US100 DAYTRADING ═══════════ -->
     <div class="page" id="page-us100">
 
-      <div class="grid g-70-30" style="margin-bottom:16px">
+      <!-- TOP BAR: Signal + Generate -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
         <div>
-          <div class="ai-block" style="margin-bottom:16px">
-            <div class="ai-header">
-              <div class="ai-dot"></div>
-              <div class="ai-label">US100 – Daglig Top-Down Analys</div>
-              <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-                <div id="us-signal-badge"><span class="signal-badge signal-neutral">— Ej genererad</span></div>
-                <button class="btn btn-sm" onclick="generateUS100()">Analysera</button>
+          <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:700;letter-spacing:-0.5px">US100 Day Trading</div>
+          <div style="font-size:0.65rem;color:var(--text3);margin-top:2px">NQ Futures · ICT/SMC Analyse · Top-Down</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div id="us-signal-badge"><span class="signal-badge signal-neutral">— Ej analyserad</span></div>
+          <button class="btn" onclick="generateUS100()">⚡ Generera Daglig Analys</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadEconomicCalendar();loadUS100News()">🔄</button>
+        </div>
+      </div>
+
+      <!-- ECONOMIC WARNING BANNER -->
+      <div id="econ-warning" style="display:none;margin-bottom:16px">
+        <div class="stop-block" style="padding:14px;animation:none;border-color:var(--yellow)">
+          <div style="font-size:1.4rem;margin-bottom:4px">⚠️</div>
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--yellow);font-size:1rem">HIGH IMPACT EVENT IDAG</div>
+          <div class="stop-msg" id="econ-warning-text">Var extremt försiktig med trading idag.</div>
+        </div>
+      </div>
+
+      <!-- ROW 1: Economic Calendar + Session Bias -->
+      <div class="grid g-60-40" style="margin-bottom:16px">
+
+        <!-- ECONOMIC CALENDAR -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚡ Economic Calendar – Events Idag</div>
+            <button class="btn btn-ghost btn-sm" onclick="loadEconomicCalendar()">🔄</button>
+          </div>
+          <div id="econ-calendar"><div class="empty">Laddar...</div></div>
+          <div id="econ-ai-block" style="display:none;margin-top:12px">
+            <div class="ai-block">
+              <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI – Impact på US100</div></div>
+              <div class="ai-text" id="econ-ai-text"></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <!-- SESSION BIAS -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><div class="card-title">Session Bias</div></div>
+            <div style="font-size:0.75rem;line-height:2.4">
+              <div class="flex-between" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px">
+                <span style="color:var(--text3)">🌏 Asia</span><span id="sess-asia" style="color:var(--text3)">—</span>
+              </div>
+              <div class="flex-between" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px">
+                <span style="color:var(--text3)">🇬🇧 London</span><span id="sess-london" style="color:var(--text3)">—</span>
+              </div>
+              <div class="flex-between">
+                <span style="color:var(--text3)">🇺🇸 New York</span><span id="sess-ny" style="color:var(--text3)">—</span>
               </div>
             </div>
-            <div class="ai-text" id="us-analysis-text">Generera analys för att se today's bias baserat på 4H→1H→15m struktur, likviditet, FVG, sweeps och A++ setup-criteria.</div>
           </div>
 
-          <!-- TIMEFRAME GRID -->
-          <div class="grid g4" style="margin-bottom:16px">
-            <div class="card" style="padding:12px">
-              <div class="card-title" style="margin-bottom:6px">4H</div>
-              <div id="tf-4h" style="font-size:0.75rem;color:var(--text3)">—</div>
-            </div>
-            <div class="card" style="padding:12px">
-              <div class="card-title" style="margin-bottom:6px">1H</div>
-              <div id="tf-1h" style="font-size:0.75rem;color:var(--text3)">—</div>
-            </div>
-            <div class="card" style="padding:12px">
-              <div class="card-title" style="margin-bottom:6px">15M</div>
-              <div id="tf-15m" style="font-size:0.75rem;color:var(--text3)">—</div>
-            </div>
-            <div class="card" style="padding:12px">
-              <div class="card-title" style="margin-bottom:6px">5M</div>
-              <div id="tf-5m" style="font-size:0.75rem;color:var(--text3)">—</div>
-            </div>
-          </div>
-
-          <!-- A++ ENGINE -->
+          <!-- TIMEFRAME BIAS -->
           <div class="card">
+            <div class="card-header"><div class="card-title">Timeframe Bias</div></div>
+            <div style="font-size:0.75rem;line-height:2.4">
+              <div class="flex-between" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px">
+                <span style="color:var(--text3)">4H</span><span id="tf-4h" style="color:var(--text3)">—</span>
+              </div>
+              <div class="flex-between" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px">
+                <span style="color:var(--text3)">1H</span><span id="tf-1h" style="color:var(--text3)">—</span>
+              </div>
+              <div class="flex-between" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px">
+                <span style="color:var(--text3)">15M</span><span id="tf-15m" style="color:var(--text3)">—</span>
+              </div>
+              <div class="flex-between">
+                <span style="color:var(--text3)">5M</span><span id="tf-5m" style="color:var(--text3)">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 2: AI Analysis + A++ Engine -->
+      <div class="grid g-70-30" style="margin-bottom:16px">
+
+        <!-- MAIN AI ANALYSIS -->
+        <div class="ai-block">
+          <div class="ai-header">
+            <div class="ai-dot"></div>
+            <div class="ai-label">Top-Down Analys – 4H → 1H → 15M → 5M</div>
+          </div>
+          <div class="ai-text" id="us-analysis-text">Tryck på "Generera Daglig Analys" för att få:\n\n• Marknadsbias (Bullish/Bearish/Neutral)\n• Top-down struktur analys\n• Liquidity sweeps (Asia, London, NY)\n• FVG / iFVG zoner\n• CISD & SMT\n• Long / Short / No Trade signal\n• A++ setup-kriterier</div>
+        </div>
+
+        <div>
+          <!-- A++ ENGINE -->
+          <div class="card" style="margin-bottom:16px">
             <div class="card-header">
               <div class="card-title">A++ Setup Engine</div>
               <div id="aplus-badge"></div>
             </div>
             <div id="aplus-checklist">
-              <div class="empty">Generera analys för att se setup-kriterier</div>
+              <div style="font-size:0.72rem;color:var(--text3);line-height:2">
+                <div>⬜ HTF Bias Align</div>
+                <div>⬜ Liquidity Sweep</div>
+                <div>⬜ Structure Shift</div>
+                <div>⬜ FVG Reaction</div>
+                <div>⬜ Confirmation</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div>
           <!-- KEY LEVELS -->
-          <div class="card" style="margin-bottom:16px">
+          <div class="card">
             <div class="card-header"><div class="card-title">Nyckelnivåer</div></div>
             <div id="us-levels">
-              <div class="empty">Generera analys</div>
-            </div>
-          </div>
-
-          <!-- SESSION BIAS -->
-          <div class="card">
-            <div class="card-header"><div class="card-title">Session Bias</div></div>
-            <div id="us-sessions">
-              <div style="font-size:0.72rem;color:var(--text3);line-height:2">
-                <div class="flex-between"><span>Asia</span><span id="sess-asia">—</span></div>
-                <div class="flex-between"><span>London</span><span id="sess-london">—</span></div>
-                <div class="flex-between"><span>New York</span><span id="sess-ny">—</span></div>
+              <div style="font-size:0.72rem;color:var(--text3);line-height:2.2">
+                <div class="flex-between"><span>Resistance</span><span class="neg">—</span></div>
+                <div class="flex-between"><span>Support</span><span class="pos">—</span></div>
+                <div class="flex-between"><span>FVG Zone</span><span class="neu">—</span></div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ECONOMIC CALENDAR -->
-      <div class="card" style="margin-bottom:16px">
+      <!-- ROW 3: US100 News -->
+      <div class="card">
         <div class="card-header">
-          <div class="card-title">⚡ Economic Calendar – Viktiga Events Idag</div>
-          <button class="btn btn-ghost btn-sm" onclick="loadEconomicCalendar()">🔄 Uppdatera</button>
+          <div class="card-title">📰 US100 Nyheter & Marknad</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadUS100News()">🔄</button>
         </div>
-        <div id="econ-warning" style="display:none;margin-bottom:12px">
-          <div class="stop-block" style="padding:14px;animation:none;border-color:var(--yellow)">
-            <div style="font-size:1.5rem;margin-bottom:4px">⚠️</div>
-            <div style="font-family:var(--font-display);font-weight:700;color:var(--yellow);font-size:1rem">HIGH IMPACT EVENT IDAG</div>
-            <div class="stop-msg" id="econ-warning-text">Var extremt försiktig med trading idag.</div>
-          </div>
-        </div>
-        <div id="econ-calendar">
-          <div class="empty">Laddar economic calendar...</div>
-        </div>
-        <div class="ai-block" style="margin-top:14px" id="econ-ai-block" style="display:none">
-          <div class="ai-header"><div class="ai-dot"></div><div class="ai-label">AI – Vad betyder dessa events för din US100 trading?</div></div>
-          <div class="ai-text" id="econ-ai-text">Laddar analys...</div>
-        </div>
+        <div id="us-news"><div class="empty">Laddar nyheter...</div></div>
       </div>
 
-      <!-- US100 NEWS -->
-      <div class="card">
-        <div class="card-header"><div class="card-title">US100 Relaterade Nyheter</div><button class="btn btn-ghost btn-sm" onclick="loadUS100News()">🔄</button></div>
-        <div id="us-news"><div class="empty">Laddar...</div></div>
-      </div>
     </div><!-- /us100 -->
 
     <!-- ═══════════ PORTFOLIO ═══════════ -->
